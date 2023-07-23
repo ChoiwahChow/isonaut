@@ -5,10 +5,13 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <bits/stdc++.h>
 
 #include <iostream>
+// #include <ostream>
 #include <fstream>
 #include "nausparse.h"    /* which includes nauty.h */
+#include "nauty_utils.h"
 
 extern int isofilter();
 
@@ -27,14 +30,23 @@ public:
     std::vector<std::string>  ops_symbol;
 
     size_t       order;
-    sparsegraph* canon;
+    std::vector<sparsegraph*> canon;
+    std::string  model_str;
 
-    Model(): canon(NULL), order(2) {};
+public:
+    Model(): order(2) {};
+    bool operator==(const Model& a) const;
+    std::string  canon_graph_to_string() const;
+    std::string  stringify() const;
+
+    void print_model(std::ostream&) const;
 };
 
 class IsoFilter {
 private:
-    std::vector<Model> models;
+    std::vector<Model> non_iso_vec;
+    std::unordered_set<std::string>  non_iso_hash;
+    //std::unordered_map<std::string, Model>  non_iso_hash;
 
 public:
     bool parse_model(std::istream& f, Model& m, std::string& m_str);
@@ -47,7 +59,8 @@ public:
 
     bool build_binop_graph(Model& m, size_t op = 0);
 
-    size_t remove_iso();
+    bool is_non_iso(const Model&);
+    bool is_non_iso_hash(const Model&);
 };
 
 

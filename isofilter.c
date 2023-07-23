@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iostream>
 #include "isofilter.h"
+#include "nauty_utils.h"
 
 /*
 interpretation( 4, [number=1, seconds=0], [
@@ -18,7 +19,34 @@ const std::string Model::Function_label = "function";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
+std::string
+Model::canon_graph_to_string() const
+{
+    return put_sg_str(canon[0], false);
+}
 
+std::string
+Model::stringify() const
+{
+    std::string mstr;
+
+    return mstr;
+}
+
+bool
+Model::operator==(const Model& a) const
+{
+    for (size_t idx=0; idx < this->canon.size(); ++idx)
+        if (!aresame_sg(this->canon[idx], a.canon[idx]))
+            return false;
+    return true;
+}
+
+void
+Model::print_model(std::ostream& os) const
+{
+    os << model_str;
+}
 
 void
 IsoFilter::find_name(const std::string& func, std::string& name)
@@ -73,15 +101,17 @@ IsoFilter::process_all_models()
         if (line.find("interpretation") != std::string::npos) {
             Model m;
             fill_meta_data(line, m);
-            std::string  m_str(line);
-            parse_model(fs, m, m_str);
-            // std::cout << m_str;
+            m.model_str.append(line);
+            parse_model(fs, m, m.model_str);
+            // std::cout << m.model_str;
             // debug_print(m.bin_ops[0]);
             build_binop_graph(m, 0);
-            models.push_back(m);
+            // std::cout << "% " << m.stringify_canon_graph() << std::endl;
+            if (is_non_iso_hash(m))
+                m.print_model(std::cout);
         }
     }
-    size_t num_non_iso = remove_iso();
+    std::cout << "% Number of models (using hashing): " << non_iso_hash.size() << std::endl;
     return 0;
 }
 
@@ -331,6 +361,7 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
     */
             
     sparsenauty(&sg1,lab1,ptn,orbits,&options,&stats,&cg1);
+    sortlists_sg(&cg1);
 
     /* debug print
     std::cout << std::endl << "after" << std::endl;
@@ -340,19 +371,37 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
     fclose(fp);
     */
 
-    m.canon = copy_sg(&cg1, NULL);
+    m.canon.push_back(copy_sg(&cg1, NULL));
     return true;
 }
 
-size_t
-IsoFilter::remove_iso()
+bool
+IsoFilter::is_non_iso(const Model& model)
 {
-    for (size_t idx=1; idx < models.size(); ++idx) {
-        if (aresame_sg(models[0].canon, models[idx].canon))
-            std::cout << "found iso " << idx << std::endl;
-        else
-            std::cout << "found non-iso " << idx << std::endl;
+    bool non_iso = true;
+    for (auto m : non_iso_vec) {
+        if (model == m) {
+            non_iso = false;
+            break;
+        }
     }
-    return 0;
+    if (non_iso) {
+        non_iso_vec.push_back(model);
+    }
+    return non_iso;
+}
+
+
+bool
+IsoFilter::is_non_iso_hash(const Model& model)
+{
+    std::string canon_str = model.canon_graph_to_string();
+
+    if (non_iso_hash.find(canon_str) == non_iso_hash.end()) {
+        //std::cout << "% found non-iso " << idx << std::endl;
+        non_iso_hash.insert(canon_str);
+        return true;
+    }
+    return false;
 }
 
