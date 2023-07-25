@@ -1,0 +1,27 @@
+loops up to iso
+# A057771 (b-file synthesized from sequence entry)
+0 0
+1 1
+2 1
+3 1
+4 2
+5 6
+6 109
+7 23746
+8 106228849
+9 9365022303540
+10 20890436195945769617
+11 1478157455158044452849321016
+
+loops up to iso and anti-iso
+# A328746 (b-file synthesized from sequence entry)
+0 0
+1 1
+2 1
+3 1
+4 2
+5 5
+6 72
+7 12151
+8 53146457
+
