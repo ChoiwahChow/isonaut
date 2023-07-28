@@ -24,22 +24,32 @@ public:
     static const std::string Model_stopper;
 
 public:
+    std::vector<std::vector<std::vector<std::vector<size_t>>>> ternary_ops;
     std::vector<std::vector<std::vector<size_t>>> bin_ops;
     std::vector<std::vector<size_t>> un_ops;
 
     std::vector<std::string>  ops_symbol;
 
     size_t       order;
-    std::vector<sparsegraph*> canon;
+    sparsegraph* cg;
     std::string  model_str;
 
 public:
     Model(): order(2) {};
     bool operator==(const Model& a) const;
     std::string  canon_graph_to_string() const;
-    std::string  stringify() const;
+    std::string  graph_to_string(sparsegraph* g) const;
 
     void print_model(std::ostream&) const;
+
+    bool find_graph_size(size_t& num_vertices, size_t& num_edges, bool& has_S, bool& has_T);
+    void color_graph(int* ptn, int* lab, int ptn_sz, bool has_S);
+    void count_occurrences(std::vector<size_t>& R_v_count);
+    void build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                        const int R_v, const int A_c, bool has_S);
+    void build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                     const int R_v, const int A_c, bool has_S);
+    bool build_graph();
 };
 
 class IsoFilter {
@@ -57,6 +67,7 @@ public:
     int  find_arity(const std::string& func);
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
 
+    bool build_graph(Model& m);
     bool build_binop_graph(Model& m, size_t op = 0);
 
     bool is_non_iso(const Model&);

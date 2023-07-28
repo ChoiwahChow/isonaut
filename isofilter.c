@@ -22,23 +22,21 @@ const std::string Model::Model_stopper = "]).";
 std::string
 Model::canon_graph_to_string() const
 {
-    return put_sg_str(canon[0], false);
+    return put_sg_str(cg, false);
 }
 
 std::string
-Model::stringify() const
+Model::graph_to_string(sparsegraph* g) const
 {
-    std::string mstr;
-
-    return mstr;
+    return put_sg_str(g, false);
 }
+
 
 bool
 Model::operator==(const Model& a) const
 {
-    for (size_t idx=0; idx < this->canon.size(); ++idx)
-        if (!aresame_sg(this->canon[idx], a.canon[idx]))
-            return false;
+    if (!aresame_sg(this->cg, a.cg))
+        return false;
     return true;
 }
 
@@ -99,19 +97,23 @@ IsoFilter::process_all_models()
         if (line[0] == '%')
             continue; 
         if (line.find("interpretation") != std::string::npos) {
+            // debug print
+            //std::cout << "found model" << std::endl;
             Model m;
             fill_meta_data(line, m);
             m.model_str.append(line);
             parse_model(fs, m, m.model_str);
             // std::cout << m.model_str;
             // debug_print(m.bin_ops[0]);
-            build_binop_graph(m, 0);
-            // std::cout << "% " << m.stringify_canon_graph() << std::endl;
+
+            // build_binop_graph(m, 0);
+            m.build_graph();
+            // std::cout << "% debug cg: \n" << m.canon_graph_to_string() << std::endl;
             if (is_non_iso_hash(m))
                 m.print_model(std::cout);
         }
     }
-    std::cout << "% Number of models (using hashing): " << non_iso_hash.size() << std::endl;
+    std::cout << "% Number of models: " << non_iso_hash.size() << std::endl;
     return 0;
 }
 
@@ -186,35 +188,350 @@ IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
  
 
 bool
+Model::find_graph_size(size_t& num_vertices, size_t& num_edges,
+                       bool& has_S, bool& has_T)
+{
+
+    size_t num_ternary_ops = ternary_ops.size();
+    size_t num_bin_ops = bin_ops.size();
+    size_t num_unary_ops = un_ops.size();
+
+    // vertices
+    // vertices for domain elements
+    num_vertices = 3 * order;  // vertices for E, R, and F
+
+    has_S = false;    // has binary op
+    has_T = false;    // has ternary op
+    if (num_bin_ops > 0 || num_ternary_ops > 0) {
+        num_vertices += order;       // vertices for S
+        has_S = true;
+    }
+    // vertices for op tables
+    num_vertices += num_unary_ops * order;
+    num_vertices += num_bin_ops * order * order;
+
+    // debug print
+    // std::cout << "debug, find_graph_size:  Number of vertices " << num_vertices << std::endl;
+
+    // edges
+    // edges for domain elements
+    num_edges = 2 * order;      // undirected edge E to R and to F
+    if (num_bin_ops > 0)
+        num_edges += order;     // undirected edge E to S
+
+    // edges for op tables
+    num_edges += 2 * order * num_unary_ops;
+    num_edges += 3 * order * order * num_bin_ops;
+
+    num_edges *= 2;   // directed edges
+    // debug print
+    // std::cout << "debug:  Number of edges " << num_edges << std::endl;
+
+    return true;                                                                       
+}
+
+void
+Model::color_graph(int* ptn, int* lab, int ptn_sz, bool has_S)
+{
+    // colors
+    for (size_t idx=0; idx < ptn_sz; ++idx) {
+        ptn[idx] = 1;
+        lab[idx] = idx;
+    }
+    // E, R, F segments
+    size_t color_end = 0;
+    for (size_t idx = 0; idx < 3; ++idx) {
+        color_end += order;
+        ptn[color_end - 1] = 0;
+    }
+    // S, if exists
+    if (has_S) {
+        color_end += order;
+        ptn[color_end-1] = 0;
+    }
+    // op tables
+    for (auto op : un_ops) {
+        color_end += order;
+        ptn[color_end-1] = 0;
+    }
+    for (auto op : bin_ops) {
+        color_end += order * order;
+        ptn[color_end-1] = 0;
+    }
+    // debug print
+    // std::cout << "color array size: " << color_end << " space allocated: " << ptn_sz << std::endl;
+}
+
+void
+Model::count_occurrences(std::vector<size_t>& R_v_count)
+{
+    // count number of times a domain element appears in the op tables.
+    for (auto op : un_ops) {
+        for (auto v : op) {
+            R_v_count[v]++;
+        }
+    }
+    for (auto op : bin_ops) {
+        for (auto row : op) {
+            for (auto v : row) {
+                R_v_count[v]++;
+            }
+        }
+    }
+    for (auto op : ternary_ops) {  // not supported yet: 2023/07/26
+        for (auto first_arg : op) {
+            for (auto secord_arg : first_arg) {
+                for (auto v : secord_arg)  {
+                    R_v_count[v]++;
+                }
+            }
+        }
+    }
+}
+
+void
+Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int A_c, bool has_S)
+{
+    std::vector<size_t> R_v_count(order, 0);
+    count_occurrences(R_v_count);
+
+    // set up vertices for E, F, S, T and R
+    // each node in E points to F, S, T and R and to each of the cells in a row
+    // S and T may not exist (ie. value zero)
+    const size_t num_x = 2 + (has_S? 1 : 0);   //num of edges per vertex
+    const size_t E_size = num_x * order;
+    const size_t F_size = (order + 1) * order;
+    const size_t S_size = has_S? F_size : 0;
+    size_t R_pos = E_size + F_size + S_size;
+
+    for (size_t idx = 0; idx < order; ++idx) {
+        sg1.v[E_e+idx] = num_x * idx;
+        sg1.d[E_e+idx] = num_x;                              // out-degree
+        sg1.v[F_a+idx] = E_size + (order + 1) * idx;
+        sg1.d[F_a+idx] = 1 + order;                          // out-degree
+        if (has_S) {
+            sg1.v[S_a+idx] = E_size + F_size + (order + 1) * idx;
+            sg1.d[S_a+idx] = 1 + order;                      // out-degree
+        }
+
+        sg1.v[R_v+idx] = R_pos;
+        sg1.d[R_v+idx] = R_v_count[idx] + 1;
+        R_pos += sg1.d[R_v+idx];
+    }
+    // debug print
+    // std::cout << "debug: end R_pos: " << R_pos << std::endl;
+
+    // set up vertices of op tables
+    size_t A_c_el = A_c;
+    size_t A_c_pos = R_pos;
+
+    // unary op tables
+    for (auto op : un_ops) {
+        for (auto cell : op) {
+            sg1.v[A_c_el] = A_c_pos;
+            sg1.d[A_c_el] = 2;
+            A_c_pos += sg1.d[A_c_el];
+            A_c_el += 1;
+        }
+    }
+    // binary op tables
+    for (auto op : bin_ops) {
+        for (auto row : op) {
+            for (auto cell : row) {
+                sg1.v[A_c_el] = A_c_pos;
+                sg1.d[A_c_el] = 3;
+                A_c_pos += sg1.d[A_c_el];
+                A_c_el += 1;
+            }
+        }
+    }
+    // debug print
+    // std::cout << "bin_ops. Domain element: " << A_c_el << " edge pos " << A_c_pos << std::endl;
+    // ternary op tables - not supported, 7/26/2023
+}
+
+void
+Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int A_c, bool has_S)
+{
+    // E to R, F, S, and T 
+    for (size_t idx = 0; idx < order; ++idx) {
+        sg1.e[sg1.v[E_e+idx]] = F_a+idx;
+        sg1.e[sg1.v[F_a+idx]] = E_e+idx;
+        sg1.e[sg1.v[E_e+idx]+1] = R_v+idx;
+        sg1.e[sg1.v[R_v+idx]] = E_e+idx;
+        if (has_S) {
+            sg1.e[sg1.v[E_e+idx]+2] = S_a+idx;
+            sg1.e[sg1.v[S_a+idx]] = E_e+idx;
+        }
+    }
+
+    // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c
+    size_t A_c_el = A_c;
+    std::vector<size_t> R_v_pos(order, 1);   // First position of R_v points to E_e
+    std::vector<size_t> F_a_pos(order, 1);   // First position of F_a points to E_e
+    std::vector<size_t> S_a_pos(order, 1);   // First position of S_a points to E_e
+
+    for (size_t op=0; op < un_ops.size(); ++op) {
+        for (size_t f_arg=0; f_arg < order; ++f_arg) {
+            size_t cval = un_ops[op][f_arg];
+
+            sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
+            sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
+
+            sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
+            sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+            
+            F_a_pos[f_arg]++;
+            R_v_pos[cval]++;
+            A_c_el++;
+        }
+    }
+ 
+    for (size_t op=0; op < bin_ops.size(); ++op) {
+        for (size_t f_arg=0; f_arg < order; ++f_arg) {
+            for (size_t s_arg=0; s_arg < order; ++s_arg) {
+                size_t cval = bin_ops[op][f_arg][s_arg];
+
+                sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
+                sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
+
+                sg1.e[sg1.v[A_c_el]+1] = S_a + s_arg;
+                sg1.e[sg1.v[S_a+s_arg]+S_a_pos[s_arg]] = A_c_el; 
+
+                sg1.e[sg1.v[A_c_el]+2] = R_v + cval;
+                sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+            
+                F_a_pos[f_arg]++;
+                S_a_pos[s_arg]++;
+                R_v_pos[cval]++;
+                A_c_el++;
+            }
+        }
+    }
+}
+
+bool
+Model::build_graph()
+{
+    /*  7/26/2023: supports only binary and unary operations
+        E represents the domain elements
+        F represents the first argument of an operation
+        S represents the second argument of an operation
+        R represents the function value (or result of applying the function)
+        A represents the operation table
+     */
+    size_t num_vertices, num_edges;
+    bool   has_S, has_T;
+    find_graph_size(num_vertices, num_edges, has_S, has_T);
+    // debug print
+    // std::cout << "num_vertices: " << num_vertices << " num_edges: " << num_edges << std::endl;
+
+    DYNALLSTAT(int,lab,lab_sz);
+    DYNALLSTAT(int,ptn,ptn_sz);
+    DYNALLSTAT(int,orbits,orbits_sz);
+    DYNALLSTAT(int,map,map_sz);
+    static DEFAULTOPTIONS_SPARSEGRAPH(options);
+    statsblk stats;
+
+    /* Declare and initialize sparse graph structures */
+    SG_DECL(sg1);
+    SG_DECL(cg1);
+
+   /* Select option for canonical labelling */
+
+    options.getcanon = TRUE;
+
+    int mx = SETWORDSNEEDED(num_vertices);
+    nauty_check(WORDSIZE,mx,num_vertices,NAUTYVERSIONID);
+    // debug print
+    // std::cout << "WORDSIZE " << WORDSIZE << " return value for SETWORDSNEEDED(num_vertices) " << mx << std::endl;
+
+    DYNALLOC1(int,lab,lab_sz,num_vertices,"malloc");
+    DYNALLOC1(int,ptn,ptn_sz,num_vertices,"malloc");
+    DYNALLOC1(int,orbits,orbits_sz,num_vertices,"malloc");
+    DYNALLOC1(int,map,map_sz,num_vertices,"malloc");
+
+    // debug print
+    // std::cout << "lab_sz " << lab_sz  << " ptn_sz " << ptn_sz << " orbits_sz " << orbits_sz << " map_sz " << map_sz << std::endl;
+
+    // make the graph
+    SG_ALLOC(sg1,num_vertices,num_edges,"malloc");
+    sg1.nv = num_vertices;     // Number of vertices
+    sg1.nde = num_edges;       // Number of directed edges = twice of # undirected edges here
+
+    // vertices, offsets by domain element number to make them unique
+    // E.g. E_e+2 represents domain element 2, F_a represents first function_argument (row) 2,
+    // S_a+2 represents the same 2, but second function argument (column) 2,
+    // R_v+2 represents the same 2 (cell value) in the op table cell
+    // A_c+2 represents the table cell (0, 2) (the cell position, not the value in the cell).
+    const int  E_e = 0;
+    const int  R_v = E_e + order;
+    const int  F_a = R_v + order;
+    const int  S_a = has_S? F_a + order : 0;
+    const int  A_c = std::max(F_a, S_a) + order;
+
+    // debug print
+    // std::cout << "A_c: " << A_c << std::endl;
+
+    // vertices
+    build_vertices(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
+
+    // color the graph
+    color_graph(ptn, lab, ptn_sz, has_S);
+
+    // edges
+    build_edges(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
+
+    std::cout << graph_to_string(&sg1) << std::endl;
+
+    // compute canonical form
+    sparsenauty(&sg1,lab,ptn,orbits,&options,&stats,&cg1);
+
+    std::cout << "done sparsenauty " << std::endl;
+    sortlists_sg(&cg1);
+
+    cg = copy_sg(&cg1, NULL);
+    SG_FREE(sg1);
+    return true;
+}
+
+bool
 IsoFilter::build_binop_graph(Model& m, size_t op)
 {
-    /* There are 4 classes of vertices, with different colours.
+    /* For an order k binary operation.
+       There are 4 classes of vertices, with different colours.
        Say the ground set is X and operation is *.  
-       Vertices are as follows, n^2 + 3n altogether:
+       E_e is the set the domain elements in X.
+       F_a represents the first argument (row) of the binary operation, 
+       S_a represents the second argument (column), R_v represents the results,
+       or function value, A_c represents the cell of the operation table.
+       Vertices are as follows, k^2 + 4k altogether:
 
-       A_a  :  a in X
-       B_b  :   b in X
-       C_c  :  c in X
-       E_ab :  a,b in X
+       E_e  :  e in X
+       F_a  :  f in X
+       S_a  :  s in X
+       R_v  :  v in X
+       A_c  :  every pair a, b in X
 
-       For each triple a*b=c, add edges from E_ab to A_a, B_b, and C_c.
-       Also, for each x in X, add a triangle of edges A_x,B_x,C_x.
+       For each x in X, add an undirected edge from E_x to each of F_x, S_x, and R_x.
+       For each cell in the op table, where a*b=c, add undirected edges from A_ab to
+       each of F_a, S_b, and R_c.
+       Nauty represents each undirected edge by 2 directed edges.
     */
-    /*  A vertex of A, B, or C has 1 out edge, and a vertex in E_ab has 3.
-        For an order k binary operation, there are k^2 + 3k vertices
-        and 3k^2 + 3k undirected edges.  Thus, there are 2(3k^2 + 3k) directed edges.
+    /*  A vertex of E has 3 out edges (one to each of F, S, and R), so there are 3k
+        out edges for an order k binary operation.
+        Each cell of A has 3 out edges (one to each of F, S, and R), so there are 3k^2
+        out edges.
+        Thus, there are 2(3k^2 + 3k) directed edges.
 
-        In the following: A is row, B is column, C is cell values, E_ab
-        are cells.
-        Edges: C->A, C->B, and B->A.  (Triangle of edges, but not cyclic).
-               ab->a, ab->b, and ab->c.
+        In the following: F is the row, S is the column, R is the cell value, A is the cell.
      */
 
-    int num_vertices = (m.order + 3) * m.order;            //order k:  k^2 + 3k
+    int num_vertices = (m.order + 4) * m.order;            //order k:  k^2 + 4k
     int num_edges = 2 * 3 * m.order * (m.order + 1);       //directed edges: 2 * (3k^2 + 3k)
 
-    //debug print
-    //std::cout << "num vertices: " << num_vertices << " num directed edges: " << num_edges << std::endl;
+    // debug print
+    // std::cout << "debug: num vertices: " << num_vertices << " num directed edges: " << num_edges << std::endl;
 
     DYNALLSTAT(int,lab1,lab1_sz);
     DYNALLSTAT(int,ptn,ptn_sz);
@@ -222,8 +539,6 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
     DYNALLSTAT(int,map,map_sz);
     static DEFAULTOPTIONS_SPARSEGRAPH(options);
     statsblk stats;
-    // static DEFAULTOPTIONS_TRACES(options);
-    // TracesStats stats;
 
     /* Declare and initialize sparse graph structures */
     SG_DECL(sg1); 
@@ -252,41 +567,48 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
     sg1.nde = num_edges;       // Number of directed edges = twice of # undirected edges here
 
     // vertices, offsets by domain element number to make them unique
-    // E.g. A_a+2 represents row 2, B_b+2 represents the same 2, but column 2,
-    // C_c+2 represents the same 2 in the op table cell
-    // E_ab+2 represents the cell (0, 2) (the cell position, not the value in the cell).
-    const int  A_a = 0;
-    const int  B_b = m.order;
-    const int  C_c = 2 * m.order;
-    const int  E_ab = 3 * m.order;
+    // E.g. E_e+2 represents domain element 2, F_a represents first function_argument (row) 2,
+    // S_a+2 represents the same 2, but second function argument (column) 2,
+    // R_v+2 represents the same 2 (cell value) in the op table cell
+    // A_c+2 represents the table cell (0, 2) (the cell position, not the value in the cell).
+    const int  E_e = 0;
+    const int  F_a = m.order;
+    const int  S_a = 2 * m.order;
+    const int  R_v = 3 * m.order;
+    const int  A_c = 4 * m.order;
 
-    size_t C_c_count[m.order];
-    std::fill_n(C_c_count, m.order, 0);
+    // count how many times a domain element appears in the op table.
+    size_t R_v_count[m.order];
+    std::fill_n(R_v_count, m.order, 0);
     for (size_t idx = 0; idx < m.order; ++idx)
         for (size_t jdx = 0; jdx < m.order; ++jdx) {
-            C_c_count[m.bin_ops[op][idx][jdx]]++;
+            R_v_count[m.bin_ops[op][idx][jdx]]++;
         }
 
-    // vertices for A, B, and C
-    // each node in A points to B and C and to each of the cells in a row
-    size_t A_size = 2*m.order + m.order * m.order;
-    size_t C_pos = 2 * A_size;
+    // set up vertices for E, F, S, and R
+    // each node in E points to F, S and R and to each of the cells in a row
+    size_t E_size = 3 * m.order;
+    size_t F_size = (m.order + 1) * m.order;
+    size_t R_pos = E_size + 2 * F_size;
     for (size_t idx = 0; idx < m.order; ++idx) {
-        sg1.v[A_a+idx] = (m.order + 2) * idx;
-        sg1.d[A_a+idx] = m.order + 2;            // out-degree
-        sg1.v[B_b+idx] = A_size + (m.order + 2) * idx;
-        sg1.d[B_b+idx] = m.order + 2;
-        sg1.v[C_c+idx] = C_pos;
-        sg1.d[C_c+idx] = C_c_count[idx] + 2;
-        C_pos += sg1.d[C_c+idx];
+        sg1.v[E_e+idx] = 3 * idx;
+        sg1.d[E_e+idx] = 3;                                    // out-degree
+        sg1.v[F_a+idx] = E_size + (m.order + 1) * idx;
+        sg1.d[F_a+idx] = 1 + m.order;                          // out-degree
+        sg1.v[S_a+idx] = E_size + F_size + (m.order + 1) * idx;
+        sg1.d[S_a+idx] = 1 + m.order;                          // out-degree
+
+        sg1.v[R_v+idx] = R_pos;
+        sg1.d[R_v+idx] = R_v_count[idx] + 1;
+        R_pos += sg1.d[R_v+idx];
     }
 
-    // vertices for E_ab
-    size_t E_ab_vstart = 3*m.order*m.order + 6*m.order;
+    // vertices for A_c, starts in position 3k^2 from the end
+    size_t A_c_vstart = 3*m.order*m.order + 6*m.order;
     for (size_t idx=0; idx < m.order; ++idx) {
-        const size_t row_pos = E_ab + idx * m.order;
+        const size_t row_pos = A_c + idx * m.order;
         for (size_t jdx=0; jdx < m.order; ++jdx) {
-            sg1.v[row_pos+jdx] = E_ab_vstart + idx * m.order * 3 + 3 * jdx;
+            sg1.v[row_pos+jdx] = A_c_vstart + idx * m.order * 3 + 3 * jdx;
             sg1.d[row_pos+jdx] = 3;       // out-degree of vertex 
         }
     }
@@ -295,39 +617,40 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
         ptn[idx] = 1;
         lab1[idx] = idx;
     }
-    ptn[A_a+m.order-1] = 0;    // A_a
-    ptn[B_b+m.order-1] = 0;    // B_b
-    ptn[C_c+m.order-1] = 0;    // C_c
-    ptn[num_vertices-1] = 0;   // E_ab
+    ptn[E_e+m.order-1] = 0;    // E_e
+    ptn[F_a+m.order-1] = 0;    // F_a
+    ptn[S_a+m.order-1] = 0;    // S_a
+    ptn[R_v+m.order-1] = 0;    // R_v
+    ptn[num_vertices-1] = 0;   // A_c
 
     // edges
-    // triangle of edges A_x <-> B_x, B_x <-> C_x, C_x <-> A_x.
+    // E to each of F, S and R: E_x <-> F_x, E_x <-> S_x, E_x <-> R_x.
     for (size_t idx = 0; idx < m.order; ++idx) {
-        sg1.e[sg1.v[A_a+idx]] = B_b+idx;
-        sg1.e[sg1.v[A_a+idx]+1] = C_c+idx;
-        sg1.e[sg1.v[B_b+idx]] = A_a+idx;
-        sg1.e[sg1.v[B_b+idx]+1] = C_c+idx;
-        sg1.e[sg1.v[C_c+idx]] = A_a+idx;
-        sg1.e[sg1.v[C_c+idx]+1] = B_b+idx;
+        sg1.e[sg1.v[E_e+idx]] = F_a+idx;
+        sg1.e[sg1.v[E_e+idx]+1] = S_a+idx;
+        sg1.e[sg1.v[E_e+idx]+2] = R_v+idx;
+        sg1.e[sg1.v[F_a+idx]] = E_e+idx;
+        sg1.e[sg1.v[S_a+idx]] = E_e+idx;
+        sg1.e[sg1.v[R_v+idx]] = E_e+idx;
     }
 
-    // E_ab, a*b=c ->  edges from E_ab to A_a, B_b, and C_c
-    size_t C_c_pos[m.order];
-    std::fill_n(C_c_pos, m.order, 2);
+    // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c
+    size_t R_v_pos[m.order];
+    std::fill_n(R_v_pos, m.order, 1);
     for (size_t idx = 0; idx < m.order; ++idx) {
-        const size_t row_pos = E_ab + idx * m.order;
+        const size_t row_pos = A_c + idx * m.order;
         for (size_t jdx = 0; jdx < m.order; ++jdx) {
             size_t c = m.bin_ops[op][idx][jdx];
 
-            sg1.e[sg1.v[row_pos+jdx]] = A_a + idx; 
-            sg1.e[sg1.v[A_a+idx]+2+jdx] = row_pos+jdx; 
+            sg1.e[sg1.v[row_pos+jdx]] = F_a + idx; 
+            sg1.e[sg1.v[F_a+idx]+1+jdx] = row_pos+jdx; 
 
-            sg1.e[sg1.v[row_pos+jdx]+1] = B_b + jdx; 
-            sg1.e[sg1.v[B_b+jdx]+2+idx] = row_pos+jdx; 
+            sg1.e[sg1.v[row_pos+jdx]+1] = S_a + jdx; 
+            sg1.e[sg1.v[S_a+jdx]+1+idx] = row_pos+jdx; 
 
-            sg1.e[sg1.v[row_pos+jdx]+2] = C_c + c; 
-            sg1.e[sg1.v[C_c+c]+C_c_pos[c]] = row_pos+jdx;
-            C_c_pos[c]++;
+            sg1.e[sg1.v[row_pos+jdx]+2] = R_v + c;         //TODO check!
+            sg1.e[sg1.v[R_v+c]+R_v_pos[c]] = row_pos+jdx;
+            R_v_pos[c]++;
         }
     }
     /* debug print of edges 
@@ -371,7 +694,7 @@ IsoFilter::build_binop_graph(Model& m, size_t op)
     fclose(fp);
     */
 
-    m.canon.push_back(copy_sg(&cg1, NULL));
+    m.cg = copy_sg(&cg1, NULL);
     return true;
 }
 

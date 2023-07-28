@@ -1,3 +1,38 @@
+1.  Suppose the elements are 1..n, and the operations are +,*.  We need 6 classes of vertices, which must be coloured differently from each other so they don't get mixed up.
+  E[1..n] representing the elements
+  F[1..n] representing the first operand
+  S[1..n] representing the second operand
+  R[1..n] representing an operation result
+  A[1..n,1..n] representing the + operation
+  M[1..n,1..n] representing the * operation
+
+   Join E[i] to F[i], S[i] and R[i] for each i.
+   For each i,j, join A[i,j] to F[i], S[j], R[i+j]
+   For each i,j, join M[i,j] to F[i], S[j], R[i*j]
+
+  Now graph isomorphism = algebra isomorphism.  You can get a canonical labelling and the automorphism group from the action on E[1..n].
+
+2.  Again 6 classes of vertices, coloured differently. Say the operation is f(x,y,z).
+  E[1..n] representing the elements
+  F[1..n] representing the first operand
+  S[1..n] representing the second operand
+  T[1..n] representing the third operand
+  R[1..n] representing an operation result
+  X[1..n,1..n,1..n] representing the operation
+
+  Join E[i] to F[i], S[i], T[i], R[i] for each i.
+  For each i,j,k, join X[i,j,k] = F[i], S[j], T[k], R[f(i,j,k)].
+
+3. We can simplify the above.  Say the operation is f.  3 classes of vertices.
+   E[1..n] representing the elements
+   A[1..n] representing the input
+   R[1..n] representing the output
+
+   Join E[i] to A[i] and R[i] for each i.
+   Join A[i] to R[f(i)] for each i.
+
+
+
 loops up to iso
 # A057771 (b-file synthesized from sequence entry)
 0 0
