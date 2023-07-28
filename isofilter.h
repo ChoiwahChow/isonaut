@@ -20,6 +20,8 @@ class Model {
 public:
     static const std::string Interpretation_label;
     static const std::string Function_label;
+    static const std::string Function_unary_label;
+    static const std::string Function_binary_label;
     static const std::string Function_stopper;
     static const std::string Model_stopper;
 
@@ -60,7 +62,9 @@ private:
 
 public:
     bool parse_model(std::istream& f, Model& m, std::string& m_str);
+    bool parse_unary(const std::string& line, Model& m);
     bool parse_bin(std::istream& f, Model& m, std::string& m_str);
+    void parse_row(std::string& line, std::vector<size_t>& row);
     int  process_all_models();
     void find_name(const std::string& func, std::string& name);
     void fill_meta_data(const std::string& interp, Model& m);

@@ -5,17 +5,19 @@
 #include "nauty_utils.h"
 
 /*
-interpretation( 4, [number=1, seconds=0], [
+interpretation( 3, [number=1, seconds=0], [
+  function('(_), [0,1,2 ]),
   function(*(_,_), [
-    0,1,0,0,
-    0,0,0,0,
-    0,0,0,0,
-    0,0,0,0 ])]).
+    0,1,0,
+    1,0,1,
+    0,1,2 ])]).
 Read line-by-line from a file
 */
 
 const std::string Model::Interpretation_label = "interpretation";
 const std::string Model::Function_label = "function";
+const std::string Model::Function_unary_label = "(_)";
+const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
@@ -66,10 +68,10 @@ IsoFilter::fill_meta_data(const std::string& interp, Model& m)
 int
 IsoFilter::find_arity(const std::string& func)
 {
-    size_t arity = 2;
-    if (func.find("(_,_)") != std::string::npos)
+    size_t arity = 0;
+    if (func.find(Model::Function_binary_label) != std::string::npos)
         arity = 2;
-    if (func.find("(_)") != std::string::npos)
+    else if (func.find(Model::Function_unary_label) != std::string::npos)
         arity = 1;
     return arity;
 }
@@ -108,12 +110,12 @@ IsoFilter::process_all_models()
 
             // build_binop_graph(m, 0);
             m.build_graph();
-            // std::cout << "% debug cg: \n" << m.canon_graph_to_string() << std::endl;
+            //std::cout << "% debug cg: \n" << m.canon_graph_to_string() << std::endl;
             if (is_non_iso_hash(m))
                 m.print_model(std::cout);
         }
     }
-    std::cout << "% Number of models: " << non_iso_hash.size() << std::endl;
+    std::cout << "% Number of non-iso models: " << non_iso_hash.size() << std::endl;
     return 0;
 }
 
@@ -134,12 +136,54 @@ IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
             m_str.append(line);
             int arity = find_arity(line);
             switch (arity) {
+            case 1:
+                done = parse_unary(line, m);
+                break;
             default:
                 done = parse_bin(fs, m, m_str);
             }
         }
     }
     return true;
+}
+
+void
+IsoFilter::parse_row(std::string& line, std::vector<size_t>& row)
+{
+    /* input format:
+         0,1,0,  or   0,1,0
+       fill the numbers into the vector "row"
+    */
+    blankout(line);
+    std::stringstream ss(line);
+    std::string temp;
+    int num;
+    ss >> temp;
+    while (!ss.eof()) {
+        if (std::stringstream(temp) >> num)
+            row.push_back(num);
+        ss >> temp;
+    }
+}
+
+bool
+IsoFilter::parse_unary(const std::string& line, Model& m)
+{
+    /* sample line:
+       function('(_), [0,1,2 ]),
+    */
+    bool end_of_model = false;
+    if (line.find(Model::Model_stopper) != std::string::npos) 
+        end_of_model = true;
+
+    size_t start = line.find("[");
+    size_t end = line.find("]");
+    std::string row_str = line.substr(start+1, end - start - 1);
+    std::vector<size_t> row;
+    parse_row(row_str, row);
+    m.un_ops.push_back(row); 
+
+    return end_of_model;    
 }
 
 bool
@@ -168,6 +212,8 @@ IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
             if (line.find(Model::Model_stopper) != std::string::npos)
                 end_model = true;
         }
+        parse_row(line, row);
+        /*
         blankout(line);
         std::stringstream ss(line);
         std::string temp;
@@ -178,6 +224,7 @@ IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
                 row.push_back(num);
             ss >> temp;
         }
+        */
         bin_op.push_back(row);
         row.clear();
     }
@@ -260,6 +307,9 @@ Model::color_graph(int* ptn, int* lab, int ptn_sz, bool has_S)
     }
     // debug print
     // std::cout << "color array size: " << color_end << " space allocated: " << ptn_sz << std::endl;
+    // for (size_t idx=0; idx < ptn_sz; ++idx)
+    //     std::cout << ptn[idx] << " ";
+    // std::cout << std::endl;
 }
 
 void
@@ -298,20 +348,28 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
     // set up vertices for E, F, S, T and R
     // each node in E points to F, S, T and R and to each of the cells in a row
     // S and T may not exist (ie. value zero)
-    const size_t num_x = 2 + (has_S? 1 : 0);   //num of edges per vertex
-    const size_t E_size = num_x * order;
-    const size_t F_size = (order + 1) * order;
-    const size_t S_size = has_S? F_size : 0;
+    const size_t num_F = un_ops.size();
+    const size_t num_S = bin_ops.size();
+    const size_t num_T = ternary_ops.size();     // 7/29/2023, not supported yet
+
+    const size_t E_outd = 2 + (has_S? 1 : 0);    //num of out edges per vertex
+    const size_t E_size = E_outd * order;
+    const size_t F_outd = num_F + num_S*order + 1;  // out-degree of first arg
+    const size_t F_size = F_outd * order;
+    const size_t S_outd = num_S*order + 1;
+    const size_t S_size = has_S? S_outd * order : 0;
     size_t R_pos = E_size + F_size + S_size;
 
+    // debug print
+    // std::cout << "debug: start R_pos: " << R_pos << "  has_S: " << has_S << std::endl;
     for (size_t idx = 0; idx < order; ++idx) {
-        sg1.v[E_e+idx] = num_x * idx;
-        sg1.d[E_e+idx] = num_x;                              // out-degree
-        sg1.v[F_a+idx] = E_size + (order + 1) * idx;
-        sg1.d[F_a+idx] = 1 + order;                          // out-degree
+        sg1.v[E_e+idx] = E_outd * idx;
+        sg1.d[E_e+idx] = E_outd;                         // out-degree
+        sg1.v[F_a+idx] = E_size + F_outd * idx;
+        sg1.d[F_a+idx] = F_outd;                          // out-degree
         if (has_S) {
-            sg1.v[S_a+idx] = E_size + F_size + (order + 1) * idx;
-            sg1.d[S_a+idx] = 1 + order;                      // out-degree
+            sg1.v[S_a+idx] = E_size + F_size + S_outd * idx;
+            sg1.d[S_a+idx] = S_outd;                      // out-degree
         }
 
         sg1.v[R_v+idx] = R_pos;
@@ -319,7 +377,7 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
         R_pos += sg1.d[R_v+idx];
     }
     // debug print
-    // std::cout << "debug: end R_pos: " << R_pos << std::endl;
+    // std::cout << "debug: end R_pos: " << R_pos << "  A_c " << A_c << std::endl;
 
     // set up vertices of op tables
     size_t A_c_el = A_c;
@@ -331,9 +389,12 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
             sg1.v[A_c_el] = A_c_pos;
             sg1.d[A_c_el] = 2;
             A_c_pos += sg1.d[A_c_el];
-            A_c_el += 1;
+            A_c_el++;
         }
     }
+    // debug print
+    // std::cout << "un_ops. Domain element: " << A_c_el << " edge pos (A_c_pos) " << A_c_pos << std::endl;
+
     // binary op tables
     for (auto op : bin_ops) {
         for (auto row : op) {
@@ -341,7 +402,7 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
                 sg1.v[A_c_el] = A_c_pos;
                 sg1.d[A_c_el] = 3;
                 A_c_pos += sg1.d[A_c_el];
-                A_c_el += 1;
+                A_c_el++;
             }
         }
     }
@@ -381,6 +442,9 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
             sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
             
+            std::cout << "f_arg: " << f_arg << ". nde sg1.d[F_a+f_arg] " << sg1.d[F_a+f_arg] << std::endl;
+            std::cout << "A_c_el: " << A_c_el << ". nde sg1.d[A_c_el] " << sg1.d[A_c_el] << std::endl;
+            std::cout << "cval: " << cval << ". nde sg1.d[R_v+cval] " << sg1.d[R_v+cval] << std::endl;
             F_a_pos[f_arg]++;
             R_v_pos[cval]++;
             A_c_el++;
@@ -395,10 +459,10 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
                 sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
                 sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
-                sg1.e[sg1.v[A_c_el]+1] = S_a + s_arg;
+                sg1.e[sg1.v[A_c_el]+2] = S_a + s_arg;
                 sg1.e[sg1.v[S_a+s_arg]+S_a_pos[s_arg]] = A_c_el; 
 
-                sg1.e[sg1.v[A_c_el]+2] = R_v + cval;
+                sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
                 sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
             
                 F_a_pos[f_arg]++;
@@ -408,6 +472,8 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             }
         }
     }
+    // std::cout << "F_a_pos[0]: " << F_a_pos[0] << ".  A_c_el: " << A_c_el << ". A_c: " << A_c << std::endl;
+    // std::cout << "S_a_pos[2]: " << S_a_pos[2] << ".  R_v_pos[2]: " << R_v_pos[2] << std::endl;
 }
 
 bool
@@ -471,7 +537,7 @@ Model::build_graph()
     const int  A_c = std::max(F_a, S_a) + order;
 
     // debug print
-    // std::cout << "A_c: " << A_c << std::endl;
+    std::cout << "E R F S A: " << E_e << " " << R_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
 
     // vertices
     build_vertices(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
@@ -482,13 +548,17 @@ Model::build_graph()
     // edges
     build_edges(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
 
-    std::cout << graph_to_string(&sg1) << std::endl;
+    //debug print
+    //std::cout << graph_to_string(&sg1) << std::endl;
 
     // compute canonical form
     sparsenauty(&sg1,lab,ptn,orbits,&options,&stats,&cg1);
 
-    std::cout << "done sparsenauty " << std::endl;
+    // debug print
+    // std::cout << "done sparsenauty " << std::endl;
     sortlists_sg(&cg1);
+    // debug print
+    std::cout << graph_to_string(&sg1) << std::endl;
 
     cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
