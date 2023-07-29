@@ -38,6 +38,8 @@ public:
 
 public:
     Model(): order(2) {};
+    ~Model() {SG_FREE(*cg);};
+
     bool operator==(const Model& a) const;
     std::string  canon_graph_to_string() const;
     std::string  graph_to_string(sparsegraph* g) const;
@@ -72,7 +74,6 @@ public:
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
 
     bool build_graph(Model& m);
-    bool build_binop_graph(Model& m, size_t op = 0);
 
     bool is_non_iso(const Model&);
     bool is_non_iso_hash(const Model&);

@@ -108,7 +108,6 @@ IsoFilter::process_all_models()
             // std::cout << m.model_str;
             // debug_print(m.bin_ops[0]);
 
-            // build_binop_graph(m, 0);
             m.build_graph();
             //std::cout << "% debug cg: \n" << m.canon_graph_to_string() << std::endl;
             if (is_non_iso_hash(m))
@@ -354,9 +353,9 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
 
     const size_t E_outd = 2 + (has_S? 1 : 0);    //num of out edges per vertex
     const size_t E_size = E_outd * order;
-    const size_t F_outd = num_F + num_S*order + 1;  // out-degree of first arg
+    const size_t F_outd = num_F + num_S * order + 1;  // out-degree of first arg
     const size_t F_size = F_outd * order;
-    const size_t S_outd = num_S*order + 1;
+    const size_t S_outd = num_S * order + 1;          // out-degree of second arg
     const size_t S_size = has_S? S_outd * order : 0;
     size_t R_pos = E_size + F_size + S_size;
 
@@ -366,10 +365,10 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
         sg1.v[E_e+idx] = E_outd * idx;
         sg1.d[E_e+idx] = E_outd;                         // out-degree
         sg1.v[F_a+idx] = E_size + F_outd * idx;
-        sg1.d[F_a+idx] = F_outd;                          // out-degree
+        sg1.d[F_a+idx] = F_outd;                         // out-degree
         if (has_S) {
             sg1.v[S_a+idx] = E_size + F_size + S_outd * idx;
-            sg1.d[S_a+idx] = S_outd;                      // out-degree
+            sg1.d[S_a+idx] = S_outd;                     // out-degree
         }
 
         sg1.v[R_v+idx] = R_pos;
@@ -442,9 +441,6 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
             sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
             
-            std::cout << "f_arg: " << f_arg << ". nde sg1.d[F_a+f_arg] " << sg1.d[F_a+f_arg] << std::endl;
-            std::cout << "A_c_el: " << A_c_el << ". nde sg1.d[A_c_el] " << sg1.d[A_c_el] << std::endl;
-            std::cout << "cval: " << cval << ". nde sg1.d[R_v+cval] " << sg1.d[R_v+cval] << std::endl;
             F_a_pos[f_arg]++;
             R_v_pos[cval]++;
             A_c_el++;
@@ -472,8 +468,6 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             }
         }
     }
-    // std::cout << "F_a_pos[0]: " << F_a_pos[0] << ".  A_c_el: " << A_c_el << ". A_c: " << A_c << std::endl;
-    // std::cout << "S_a_pos[2]: " << S_a_pos[2] << ".  R_v_pos[2]: " << R_v_pos[2] << std::endl;
 }
 
 bool
@@ -537,7 +531,7 @@ Model::build_graph()
     const int  A_c = std::max(F_a, S_a) + order;
 
     // debug print
-    std::cout << "E R F S A: " << E_e << " " << R_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
+    // std::cout << "E R F S A: " << E_e << " " << R_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
 
     // vertices
     build_vertices(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
@@ -558,213 +552,10 @@ Model::build_graph()
     // std::cout << "done sparsenauty " << std::endl;
     sortlists_sg(&cg1);
     // debug print
-    std::cout << graph_to_string(&sg1) << std::endl;
+    // std::cout << graph_to_string(&sg1) << std::endl;
 
     cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
-    return true;
-}
-
-bool
-IsoFilter::build_binop_graph(Model& m, size_t op)
-{
-    /* For an order k binary operation.
-       There are 4 classes of vertices, with different colours.
-       Say the ground set is X and operation is *.  
-       E_e is the set the domain elements in X.
-       F_a represents the first argument (row) of the binary operation, 
-       S_a represents the second argument (column), R_v represents the results,
-       or function value, A_c represents the cell of the operation table.
-       Vertices are as follows, k^2 + 4k altogether:
-
-       E_e  :  e in X
-       F_a  :  f in X
-       S_a  :  s in X
-       R_v  :  v in X
-       A_c  :  every pair a, b in X
-
-       For each x in X, add an undirected edge from E_x to each of F_x, S_x, and R_x.
-       For each cell in the op table, where a*b=c, add undirected edges from A_ab to
-       each of F_a, S_b, and R_c.
-       Nauty represents each undirected edge by 2 directed edges.
-    */
-    /*  A vertex of E has 3 out edges (one to each of F, S, and R), so there are 3k
-        out edges for an order k binary operation.
-        Each cell of A has 3 out edges (one to each of F, S, and R), so there are 3k^2
-        out edges.
-        Thus, there are 2(3k^2 + 3k) directed edges.
-
-        In the following: F is the row, S is the column, R is the cell value, A is the cell.
-     */
-
-    int num_vertices = (m.order + 4) * m.order;            //order k:  k^2 + 4k
-    int num_edges = 2 * 3 * m.order * (m.order + 1);       //directed edges: 2 * (3k^2 + 3k)
-
-    // debug print
-    // std::cout << "debug: num vertices: " << num_vertices << " num directed edges: " << num_edges << std::endl;
-
-    DYNALLSTAT(int,lab1,lab1_sz);
-    DYNALLSTAT(int,ptn,ptn_sz);
-    DYNALLSTAT(int,orbits,orbits_sz);
-    DYNALLSTAT(int,map,map_sz);
-    static DEFAULTOPTIONS_SPARSEGRAPH(options);
-    statsblk stats;
-
-    /* Declare and initialize sparse graph structures */
-    SG_DECL(sg1); 
-    SG_DECL(cg1);
-
-   /* Select option for canonical labelling */
-
-    options.getcanon = TRUE;
-
-    int mx = SETWORDSNEEDED(num_vertices);
-    nauty_check(WORDSIZE,mx,num_vertices,NAUTYVERSIONID);
-    //debug print
-    //std::cout << "WORDSIZE " << WORDSIZE << " return value for SETWORDSNEEDED(num_vertices) " << mx << std::endl;
-
-    DYNALLOC1(int,lab1,lab1_sz,num_vertices,"malloc");
-    DYNALLOC1(int,ptn,ptn_sz,num_vertices,"malloc");
-    DYNALLOC1(int,orbits,orbits_sz,num_vertices,"malloc");
-    DYNALLOC1(int,map,map_sz,num_vertices,"malloc");
-
-    //debug print
-    //std::cout << "lab1_sz " << lab1_sz  << " ptn_sz " << ptn_sz << " orbits_sz " << orbits_sz << " map_sz " << map_sz << std::endl;
-
-    // make the graph
-    SG_ALLOC(sg1,num_vertices,num_edges,"malloc");
-    sg1.nv = num_vertices;     // Number of vertices 
-    sg1.nde = num_edges;       // Number of directed edges = twice of # undirected edges here
-
-    // vertices, offsets by domain element number to make them unique
-    // E.g. E_e+2 represents domain element 2, F_a represents first function_argument (row) 2,
-    // S_a+2 represents the same 2, but second function argument (column) 2,
-    // R_v+2 represents the same 2 (cell value) in the op table cell
-    // A_c+2 represents the table cell (0, 2) (the cell position, not the value in the cell).
-    const int  E_e = 0;
-    const int  F_a = m.order;
-    const int  S_a = 2 * m.order;
-    const int  R_v = 3 * m.order;
-    const int  A_c = 4 * m.order;
-
-    // count how many times a domain element appears in the op table.
-    size_t R_v_count[m.order];
-    std::fill_n(R_v_count, m.order, 0);
-    for (size_t idx = 0; idx < m.order; ++idx)
-        for (size_t jdx = 0; jdx < m.order; ++jdx) {
-            R_v_count[m.bin_ops[op][idx][jdx]]++;
-        }
-
-    // set up vertices for E, F, S, and R
-    // each node in E points to F, S and R and to each of the cells in a row
-    size_t E_size = 3 * m.order;
-    size_t F_size = (m.order + 1) * m.order;
-    size_t R_pos = E_size + 2 * F_size;
-    for (size_t idx = 0; idx < m.order; ++idx) {
-        sg1.v[E_e+idx] = 3 * idx;
-        sg1.d[E_e+idx] = 3;                                    // out-degree
-        sg1.v[F_a+idx] = E_size + (m.order + 1) * idx;
-        sg1.d[F_a+idx] = 1 + m.order;                          // out-degree
-        sg1.v[S_a+idx] = E_size + F_size + (m.order + 1) * idx;
-        sg1.d[S_a+idx] = 1 + m.order;                          // out-degree
-
-        sg1.v[R_v+idx] = R_pos;
-        sg1.d[R_v+idx] = R_v_count[idx] + 1;
-        R_pos += sg1.d[R_v+idx];
-    }
-
-    // vertices for A_c, starts in position 3k^2 from the end
-    size_t A_c_vstart = 3*m.order*m.order + 6*m.order;
-    for (size_t idx=0; idx < m.order; ++idx) {
-        const size_t row_pos = A_c + idx * m.order;
-        for (size_t jdx=0; jdx < m.order; ++jdx) {
-            sg1.v[row_pos+jdx] = A_c_vstart + idx * m.order * 3 + 3 * jdx;
-            sg1.d[row_pos+jdx] = 3;       // out-degree of vertex 
-        }
-    }
-    // colors
-    for (size_t idx=0; idx < ptn_sz; ++idx) {
-        ptn[idx] = 1;
-        lab1[idx] = idx;
-    }
-    ptn[E_e+m.order-1] = 0;    // E_e
-    ptn[F_a+m.order-1] = 0;    // F_a
-    ptn[S_a+m.order-1] = 0;    // S_a
-    ptn[R_v+m.order-1] = 0;    // R_v
-    ptn[num_vertices-1] = 0;   // A_c
-
-    // edges
-    // E to each of F, S and R: E_x <-> F_x, E_x <-> S_x, E_x <-> R_x.
-    for (size_t idx = 0; idx < m.order; ++idx) {
-        sg1.e[sg1.v[E_e+idx]] = F_a+idx;
-        sg1.e[sg1.v[E_e+idx]+1] = S_a+idx;
-        sg1.e[sg1.v[E_e+idx]+2] = R_v+idx;
-        sg1.e[sg1.v[F_a+idx]] = E_e+idx;
-        sg1.e[sg1.v[S_a+idx]] = E_e+idx;
-        sg1.e[sg1.v[R_v+idx]] = E_e+idx;
-    }
-
-    // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c
-    size_t R_v_pos[m.order];
-    std::fill_n(R_v_pos, m.order, 1);
-    for (size_t idx = 0; idx < m.order; ++idx) {
-        const size_t row_pos = A_c + idx * m.order;
-        for (size_t jdx = 0; jdx < m.order; ++jdx) {
-            size_t c = m.bin_ops[op][idx][jdx];
-
-            sg1.e[sg1.v[row_pos+jdx]] = F_a + idx; 
-            sg1.e[sg1.v[F_a+idx]+1+jdx] = row_pos+jdx; 
-
-            sg1.e[sg1.v[row_pos+jdx]+1] = S_a + jdx; 
-            sg1.e[sg1.v[S_a+jdx]+1+idx] = row_pos+jdx; 
-
-            sg1.e[sg1.v[row_pos+jdx]+2] = R_v + c;         //TODO check!
-            sg1.e[sg1.v[R_v+c]+R_v_pos[c]] = row_pos+jdx;
-            R_v_pos[c]++;
-        }
-    }
-    /* debug print of edges 
-    std::cout << "Edge array:" << std::endl;
-    for (size_t idx = 0; idx < num_edges; ++idx) {
-        std::cout << idx << ": " << sg1.e[idx] << std::endl;
-    }
-    */
-
-    /* debug print of lab1 and ptn - color scheme
-    std::cout << "Color arrays" << std::endl;
-    for (size_t idx = 0; idx < lab1_sz; ++idx) 
-        std::cout << lab1[idx] << " ";
-    std::cout << std::endl << lab1_sz << std::endl;
-
-    for (size_t idx = 0; idx < ptn_sz; ++idx) 
-        std::cout << ptn[idx] << " ";
-    std::cout << std::endl << ptn_sz << std::endl;
-    */
- 
-    /* Label sg1, result in cg1 and labelling in lab1.
-       It is not necessary to pre-allocate space in cg1, but
-       they have to be initialised as we did above.  */
-
-    /*debug print
-    { FILE *fp = fopen("sg1.txt", "a");
-    put_sg(fp, &sg1, true, 120);
-    fputc('\n', fp);
-    fclose(fp); }
-    std::cout << "Printed graph in sg1.txt" << std::endl;
-    */
-            
-    sparsenauty(&sg1,lab1,ptn,orbits,&options,&stats,&cg1);
-    sortlists_sg(&cg1);
-
-    /* debug print
-    std::cout << std::endl << "after" << std::endl;
-    FILE *fp = fopen("cg1.txt", "a");
-    put_sg(fp, &cg1, true, 120);
-    fputc('\n', fp);
-    fclose(fp);
-    */
-
-    m.cg = copy_sg(&cg1, NULL);
     return true;
 }
 

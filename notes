@@ -60,3 +60,41 @@ loops up to iso and anti-iso
 7 12151
 8 53146457
 
+inverse semigroups up to iso and anti-iso
+# A001428 as a simple table
+1		1
+2		2
+3		5
+4		16
+5		52
+6		208
+7		911
+8		4637
+9		26422
+10		169163
+11		1198651
+12		9324047
+13		78860687
+14		719606005
+15		7035514642
+
+inverse semigroups up to isomorphism
+A118099 as a simple table
+n		a(n)
+1		1
+2		3
+3		8
+4		24
+5		76
+6		284
+7		1195
+8		5832
+9		32254
+10		201417
+11		1400068
+12		10724115
+13		89584802
+14		809190807
+15		7844705449
+
+
