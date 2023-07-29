@@ -91,6 +91,8 @@ IsoFilter::process_all_models()
     std::istream& fs = std::cin;
     bool  done = false;
 
+    double start_cpu_time = read_cpu_time();
+    unsigned start_wall_clock = read_wall_clock();
     std::string line;
     while (!fs.eof()) {
         getline(fs, line);
@@ -102,12 +104,16 @@ IsoFilter::process_all_models()
             m.parse_model(fs);
 
             m.build_graph();
-            //std::cout << "% debug cg: \n" << m.graph_to_string(cg) << std::endl;
+
             if (is_non_iso_hash(m))
                 m.print_model(std::cout, out_cg);
         }
     }
-    std::cout << "% Number of non-iso models: " << non_iso_hash.size() << std::endl;
+    double total_cpu_time = read_cpu_time() - start_cpu_time;
+    unsigned elapsed_time = read_wall_clock() - start_wall_clock;
+    std::cout << "% Number of non-iso models: " << non_iso_hash.size() << " seconds." << std::endl;
+    std::cout << "% Total CPU time: " << total_cpu_time << " seconds." << std::endl;
+    std::cout << "% Elapsed time: " << elapsed_time << std::endl;
     return 0;
 }
 
@@ -524,7 +530,7 @@ Model::build_graph()
     build_edges(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
 
     //debug print
-    //std::cout << graph_to_string(&sg1) << std::endl;
+    // std::cout << graph_to_string(&sg1) << std::endl;
 
     // compute canonical form
     sparsenauty(&sg1,lab,ptn,orbits,&options,&stats,&cg1);
@@ -533,7 +539,7 @@ Model::build_graph()
     // std::cout << "done sparsenauty " << std::endl;
     sortlists_sg(&cg1);
     // debug print
-    // std::cout << graph_to_string(&sg1) << std::endl;
+    // std::cout << graph_to_string(&cg1) << std::endl;
 
     cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
