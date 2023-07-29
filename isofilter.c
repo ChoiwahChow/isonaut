@@ -111,9 +111,9 @@ IsoFilter::process_all_models()
     }
     double total_cpu_time = read_cpu_time() - start_cpu_time;
     unsigned elapsed_time = read_wall_clock() - start_wall_clock;
-    std::cout << "% Number of non-iso models: " << non_iso_hash.size() << " seconds." << std::endl;
+    std::cout << "% Number of non-iso models: " << non_iso_hash.size() << std::endl;
     std::cout << "% Total CPU time: " << total_cpu_time << " seconds." << std::endl;
-    std::cout << "% Elapsed time: " << elapsed_time << std::endl;
+    std::cout << "% Elapsed time: " << elapsed_time << " seconds." << std::endl;
     return 0;
 }
 
