@@ -43,20 +43,20 @@ Model::print_model(std::ostream& os) const
 }
 
 void
-IsoFilter::find_name(const std::string& func, std::string& name)
+Model::find_func_name(const std::string& func)
 {
     int start = func.find("(");
     int end = func.find("(", start+1);
-    name = func.substr(start+1, end-start-1);
+    op_symbols.push_back(func.substr(start+1, end-start-1));
 }
 
 void
-IsoFilter::fill_meta_data(const std::string& interp, Model& m)
+Model::fill_meta_data(const std::string& interp)
 {
     int start = interp.find("( ");
     int end = interp.find(", ", start+1);
     std::stringstream ss(interp.substr(start+1, end-start-1));
-    ss >> m.order;
+    ss >> order;
 }
 
 int
@@ -94,7 +94,7 @@ IsoFilter::process_all_models()
             continue; 
         if (line.find("interpretation") != std::string::npos) {
             Model m;
-            fill_meta_data(line, m);
+            m.fill_meta_data(line);
             m.model_str.append(line);
             parse_model(fs, m, m.model_str);
 
@@ -124,6 +124,7 @@ IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
             m_str.append("\n");
             m_str.append(line);
             int arity = find_arity(line);
+            m.find_func_name(line);
             switch (arity) {
             case 1:
                 done = parse_unary(line, m);

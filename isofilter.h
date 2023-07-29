@@ -30,7 +30,7 @@ public:
     std::vector<std::vector<std::vector<size_t>>> bin_ops;
     std::vector<std::vector<size_t>> un_ops;
 
-    std::vector<std::string>  ops_symbol;
+    std::vector<std::string>  op_symbols;
 
     size_t       order;
     sparsegraph* cg;
@@ -45,6 +45,8 @@ public:
 
     void print_model(std::ostream&) const;
 
+    void fill_meta_data(const std::string& interp);
+    void find_func_name(const std::string& func);
     bool find_graph_size(size_t& num_vertices, size_t& num_edges, bool& has_S, bool& has_T);
     void color_graph(int* ptn, int* lab, int ptn_sz, bool has_S);
     void count_occurrences(std::vector<size_t>& R_v_count);
@@ -67,8 +69,6 @@ public:
     bool parse_bin(std::istream& f, Model& m, std::string& m_str);
     void parse_row(std::string& line, std::vector<size_t>& row);
     int  process_all_models();
-    void find_name(const std::string& func, std::string& name);
-    void fill_meta_data(const std::string& interp, Model& m);
     int  find_arity(const std::string& func);
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
 
