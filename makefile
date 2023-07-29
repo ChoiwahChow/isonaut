@@ -51,7 +51,7 @@ PCFILE=nauty.pc
 all : isonaut ;
 
 
-isonaut : nauty.h nausparse.h nauty_utils.h test_iso_graph.h isofilter.h \
+isonaut : nauty.h nausparse.h nauty_utils.h test_iso_graph.h isofilter.h CLI11.hpp \
           nauty_utils.c test_iso_graph.c isofilter.c isofilter_main.c \
           nauty.a
 	${CC} -o isonaut ${CFLAGS} nauty_utils.c test_iso_graph.c isofilter.c isofilter_main.c nauty.a ${LDFLAGS}

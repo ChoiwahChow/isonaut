@@ -37,9 +37,11 @@ Model::operator==(const Model& a) const
 }
 
 void
-Model::print_model(std::ostream& os) const
+Model::print_model(std::ostream& os, bool out_cg) const
 {
     os << model_str;
+    if (out_cg)
+        os << graph_to_string(cg);
 }
 
 void
@@ -102,7 +104,7 @@ IsoFilter::process_all_models()
             m.build_graph();
             //std::cout << "% debug cg: \n" << m.graph_to_string(cg) << std::endl;
             if (is_non_iso_hash(m))
-                m.print_model(std::cout);
+                m.print_model(std::cout, out_cg);
         }
     }
     std::cout << "% Number of non-iso models: " << non_iso_hash.size() << std::endl;

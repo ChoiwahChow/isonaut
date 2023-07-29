@@ -43,7 +43,7 @@ public:
     bool operator==(const Model& a) const;
     std::string  graph_to_string(sparsegraph* g) const;
 
-    void print_model(std::ostream&) const;
+    void print_model(std::ostream&, bool out_cg=false) const;
 
     void fill_meta_data(const std::string& interp);
     void find_func_name(const std::string& func);
@@ -61,9 +61,12 @@ class IsoFilter {
 private:
     std::vector<Model> non_iso_vec;
     std::unordered_set<std::string>  non_iso_hash;
-    //std::unordered_map<std::string, Model>  non_iso_hash;
+    bool out_cg;
 
 public:
+    IsoFilter(bool ocg) : out_cg(ocg) {};
+    IsoFilter(): out_cg(false) {};
+
     bool parse_model(std::istream& f, Model& m, std::string& m_str);
     bool parse_unary(const std::string& line, Model& m);
     bool parse_bin(std::istream& f, Model& m, std::string& m_str);
