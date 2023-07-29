@@ -37,6 +37,14 @@ public:
     std::string  model_str;
 
 public:
+    bool parse_model(std::istream& f);
+    bool parse_unary(const std::string& line);
+    bool parse_bin(std::istream& f);
+    void parse_row(std::string& line, std::vector<size_t>& row);
+    int  find_arity(const std::string& func);
+    void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
+
+public:
     Model(): order(2) {};
     ~Model() {SG_FREE(*cg);};
 
@@ -67,15 +75,7 @@ public:
     IsoFilter(bool ocg) : out_cg(ocg) {};
     IsoFilter(): out_cg(false) {};
 
-    bool parse_model(std::istream& f, Model& m, std::string& m_str);
-    bool parse_unary(const std::string& line, Model& m);
-    bool parse_bin(std::istream& f, Model& m, std::string& m_str);
-    void parse_row(std::string& line, std::vector<size_t>& row);
     int  process_all_models();
-    int  find_arity(const std::string& func);
-    void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
-
-    bool build_graph(Model& m);
 
     bool is_non_iso(const Model&);
     bool is_non_iso_hash(const Model&);

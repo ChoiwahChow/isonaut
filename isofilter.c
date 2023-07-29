@@ -59,15 +59,17 @@ Model::fill_meta_data(const std::string& interp)
     int end = interp.find(", ", start+1);
     std::stringstream ss(interp.substr(start+1, end-start-1));
     ss >> order;
+    model_str.append(interp);
+    model_str.append("\n");
 }
 
 int
-IsoFilter::find_arity(const std::string& func)
+Model::find_arity(const std::string& func)
 {
     size_t arity = 0;
-    if (func.find(Model::Function_binary_label) != std::string::npos)
+    if (func.find(Function_binary_label) != std::string::npos)
         arity = 2;
-    else if (func.find(Model::Function_unary_label) != std::string::npos)
+    else if (func.find(Function_unary_label) != std::string::npos)
         arity = 1;
     return arity;
 }
@@ -97,9 +99,7 @@ IsoFilter::process_all_models()
         if (line.find("interpretation") != std::string::npos) {
             Model m;
             m.fill_meta_data(line);
-            m.model_str.append(line);
-            m.model_str.append("\n");
-            parse_model(fs, m, m.model_str);
+            m.parse_model(fs);
 
             m.build_graph();
             //std::cout << "% debug cg: \n" << m.graph_to_string(cg) << std::endl;
@@ -112,7 +112,7 @@ IsoFilter::process_all_models()
 }
 
 bool
-IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
+Model::parse_model(std::istream& fs)
 {
     /*  The "interpretation" line is already parsed.
         Returns true if success, false otherwise.
@@ -123,17 +123,17 @@ IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
         getline(fs, line);
         if (line[0] == '%')
             continue;
-        if (line.find(Model::Function_label) != std::string::npos) {
-            m_str.append(line);
-            m_str.append("\n");
+        if (line.find(Function_label) != std::string::npos) {
+            model_str.append(line);
+            model_str.append("\n");
             int arity = find_arity(line);
-            m.find_func_name(line);
+            find_func_name(line);
             switch (arity) {
             case 1:
-                done = parse_unary(line, m);
+                done = parse_unary(line);
                 break;
             default:
-                done = parse_bin(fs, m, m_str);
+                done = parse_bin(fs);
             }
         }
     }
@@ -141,7 +141,7 @@ IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
 }
 
 void
-IsoFilter::parse_row(std::string& line, std::vector<size_t>& row)
+Model::parse_row(std::string& line, std::vector<size_t>& row)
 {
     /* input format:
          0,1,0,  or   0,1,0
@@ -160,13 +160,13 @@ IsoFilter::parse_row(std::string& line, std::vector<size_t>& row)
 }
 
 bool
-IsoFilter::parse_unary(const std::string& line, Model& m)
+Model::parse_unary(const std::string& line)
 {
     /* sample line:
        function('(_), [0,1,2 ]),
     */
     bool end_of_model = false;
-    if (line.find(Model::Model_stopper) != std::string::npos) 
+    if (line.find(Model_stopper) != std::string::npos) 
         end_of_model = true;
 
     size_t start = line.find("[");
@@ -174,13 +174,13 @@ IsoFilter::parse_unary(const std::string& line, Model& m)
     std::string row_str = line.substr(start+1, end - start - 1);
     std::vector<size_t> row;
     parse_row(row_str, row);
-    m.un_ops.push_back(row); 
+    un_ops.push_back(row); 
 
     return end_of_model;    
 }
 
 bool
-IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
+Model::parse_bin(std::istream& fs)
 {
     /* The "[" token is already seen before coming to this function 
        On return, the line containing "])" tokens will have been removed
@@ -198,18 +198,18 @@ IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
         getline(fs, line);
         if (line[0] == '%')
             continue;
-        m_str.append(line);
-        m_str.append("\n");
-        if (line.find(Model::Function_stopper) != std::string::npos) {
+        model_str.append(line);
+        model_str.append("\n");
+        if (line.find(Function_stopper) != std::string::npos) {
             done = true;
-            if (line.find(Model::Model_stopper) != std::string::npos)
+            if (line.find(Model_stopper) != std::string::npos)
                 end_model = true;
         }
         parse_row(line, row);
         bin_op.push_back(row);
         row.clear();
     }
-    m.bin_ops.push_back(bin_op);
+    bin_ops.push_back(bin_op);
     return end_model;
 }
  
