@@ -41,7 +41,6 @@ public:
     ~Model() {SG_FREE(*cg);};
 
     bool operator==(const Model& a) const;
-    std::string  canon_graph_to_string() const;
     std::string  graph_to_string(sparsegraph* g) const;
 
     void print_model(std::ostream&) const;

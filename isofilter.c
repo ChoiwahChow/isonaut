@@ -22,12 +22,6 @@ const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
 std::string
-Model::canon_graph_to_string() const
-{
-    return put_sg_str(cg, false);
-}
-
-std::string
 Model::graph_to_string(sparsegraph* g) const
 {
     return put_sg_str(g, false);
@@ -99,17 +93,13 @@ IsoFilter::process_all_models()
         if (line[0] == '%')
             continue; 
         if (line.find("interpretation") != std::string::npos) {
-            // debug print
-            //std::cout << "found model" << std::endl;
             Model m;
             fill_meta_data(line, m);
             m.model_str.append(line);
             parse_model(fs, m, m.model_str);
-            // std::cout << m.model_str;
-            // debug_print(m.bin_ops[0]);
 
             m.build_graph();
-            //std::cout << "% debug cg: \n" << m.canon_graph_to_string() << std::endl;
+            //std::cout << "% debug cg: \n" << m.graph_to_string(cg) << std::endl;
             if (is_non_iso_hash(m))
                 m.print_model(std::cout);
         }
@@ -579,7 +569,7 @@ IsoFilter::is_non_iso(const Model& model)
 bool
 IsoFilter::is_non_iso_hash(const Model& model)
 {
-    std::string canon_str = model.canon_graph_to_string();
+    std::string canon_str = model.graph_to_string(model.cg);
 
     if (non_iso_hash.find(canon_str) == non_iso_hash.end()) {
         //std::cout << "% found non-iso " << idx << std::endl;
