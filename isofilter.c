@@ -96,6 +96,7 @@ IsoFilter::process_all_models()
             Model m;
             m.fill_meta_data(line);
             m.model_str.append(line);
+            m.model_str.append("\n");
             parse_model(fs, m, m.model_str);
 
             m.build_graph();
@@ -121,8 +122,8 @@ IsoFilter::parse_model(std::istream& fs, Model& m, std::string& m_str)
         if (line[0] == '%')
             continue;
         if (line.find(Model::Function_label) != std::string::npos) {
-            m_str.append("\n");
             m_str.append(line);
+            m_str.append("\n");
             int arity = find_arity(line);
             m.find_func_name(line);
             switch (arity) {
@@ -195,31 +196,18 @@ IsoFilter::parse_bin(std::istream& fs, Model& m, std::string& m_str)
         getline(fs, line);
         if (line[0] == '%')
             continue;
-        m_str.append("\n");
         m_str.append(line);
+        m_str.append("\n");
         if (line.find(Model::Function_stopper) != std::string::npos) {
             done = true;
             if (line.find(Model::Model_stopper) != std::string::npos)
                 end_model = true;
         }
         parse_row(line, row);
-        /*
-        blankout(line);
-        std::stringstream ss(line);
-        std::string temp;
-        int num;
-        ss >> temp;
-        while (!ss.eof()) {
-            if (std::stringstream(temp) >> num)
-                row.push_back(num);
-            ss >> temp;
-        }
-        */
         bin_op.push_back(row);
         row.clear();
     }
     m.bin_ops.push_back(bin_op);
-    m_str.append("\n");
     return end_model;
 }
  

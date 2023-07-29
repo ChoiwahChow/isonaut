@@ -32,6 +32,34 @@
    Join A[i] to R[f(i)] for each i.
 
 
+semigroups up to iso and anti-iso
+# A001423 (b-file synthesized from sequence entry)
+0 1
+1 1
+2 4
+3 18
+4 126
+5 1160
+6 15973
+7 836021
+8 1843120128
+9 52989400714478
+10 12418001077381302684
+
+semigroups up to isomorphism
+# A027851 (b-file synthesized from sequence entry)
+0 1
+1 1
+2 5
+3 24
+4 188
+5 1915
+6 28634
+7 1627672
+8 3684030417
+9 105978177936292
+
+
 
 loops up to iso
 # A057771 (b-file synthesized from sequence entry)
