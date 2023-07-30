@@ -31,9 +31,7 @@ Model::graph_to_string(sparsegraph* g) const
 bool
 Model::operator==(const Model& a) const
 {
-    if (!aresame_sg(this->cg, a.cg))
-        return false;
-    return true;
+    return aresame_sg(cg, a.cg);
 }
 
 void

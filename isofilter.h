@@ -36,13 +36,20 @@ public:
     sparsegraph* cg;
     std::string  model_str;
 
-public:
-    bool parse_model(std::istream& f);
+private:
+    bool find_graph_size(size_t& num_vertices, size_t& num_edges, bool& has_S, bool& has_T);
+    void color_graph(int* ptn, int* lab, int ptn_sz, bool has_S);
+    void count_occurrences(std::vector<size_t>& R_v_count);
+    void build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                        const int R_v, const int A_c, bool has_S);
+    void build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                     const int R_v, const int A_c, bool has_S);
+
     bool parse_unary(const std::string& line);
     bool parse_bin(std::istream& f);
     void parse_row(std::string& line, std::vector<size_t>& row);
     int  find_arity(const std::string& func);
-    void blankout(std::string& s) { std::replace( s.begin(), s.end(), ',', ' '); };
+    void blankout(std::string& s) { std::replace( s.begin(), s.end(), ']', ' '); std::replace( s.begin(), s.end(), ',', ' '); };
 
 public:
     Model(): order(2) {};
@@ -55,19 +62,14 @@ public:
 
     void fill_meta_data(const std::string& interp);
     void find_func_name(const std::string& func);
-    bool find_graph_size(size_t& num_vertices, size_t& num_edges, bool& has_S, bool& has_T);
-    void color_graph(int* ptn, int* lab, int ptn_sz, bool has_S);
-    void count_occurrences(std::vector<size_t>& R_v_count);
-    void build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
-                        const int R_v, const int A_c, bool has_S);
-    void build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
-                     const int R_v, const int A_c, bool has_S);
+
+    bool parse_model(std::istream& f);
     bool build_graph();
 };
 
 class IsoFilter {
 private:
-    std::vector<Model> non_iso_vec;
+    std::vector<Model>               non_iso_vec;     // copy and assignment constructors for Model are needed if this vector is to be used
     std::unordered_set<std::string>  non_iso_hash;
     bool out_cg;
 
@@ -81,8 +83,9 @@ public:
 
     int  process_all_models();
 
-    bool is_non_iso(const Model&);
+    bool is_non_iso(const Model&);    // for debugging only
     bool is_non_iso_hash(const Model&);
+
     static double read_cpu_time() {
         struct rusage ru;
         getrusage(RUSAGE_SELF, &ru);
