@@ -6,7 +6,7 @@ SHELL=/bin/bash
 # CFLAGS= -O4  -mpopcnt -march=native
 CC=g++
 CFLAGS= -std=c++11 -O3  -mpopcnt -march=native
-SAFECFLAGS= -O4
+SAFECFLAGS= -O3
 LDFLAGS=
 LOK=1         # 0 if no 64-bit integers
 
@@ -53,8 +53,8 @@ all : isonaut ;
 
 isonaut : nauty.h nausparse.h nauty_utils.h test_iso_graph.h isofilter.h CLI11.hpp \
           nauty_utils.c test_iso_graph.c isofilter.c isofilter_main.c \
-          nauty.a
-	${CC} -o isonaut ${CFLAGS} nauty_utils.c test_iso_graph.c isofilter.c isofilter_main.c nauty.a ${LDFLAGS}
+          ${GLIBS}
+	${CC} -o isonaut ${CFLAGS} nauty_utils.c test_iso_graph.c isofilter.c isofilter_main.c ${GLIBS} ${LDFLAGS}
 
 
 # @edit_msg@

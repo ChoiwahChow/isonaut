@@ -396,6 +396,34 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
 }
 
 void
+Model::debug_print_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int A_c, bool has_S)
+{
+    for (size_t idx = 0; idx < order; ++idx) {
+        std::cout << E_e+idx << "|" << sg1.e[sg1.v[E_e+idx]] << "  " << sg1.e[sg1.v[E_e+idx]+1] << "  " << sg1.e[sg1.v[E_e+idx]+2] << "  ";
+    }
+    std::cout << std::endl;
+    for (size_t idx = 0; idx < order; ++idx) {
+        std::cout << R_v+idx << "|";
+        for (size_t jdx = 0; jdx < sg1.d[R_v+idx]; ++jdx)
+            std::cout << sg1.e[sg1.v[R_v+idx]+jdx] << "  ";
+    }
+    std::cout << std::endl;
+    for (size_t idx = 0; idx < order; ++idx) {
+        std::cout << "**d " << sg1.d[F_a+idx] << " " << F_a+idx << "|" << sg1.e[sg1.v[F_a+idx]] << "  " << sg1.e[sg1.v[F_a+idx]+1] << " " << sg1.e[sg1.v[F_a+idx]+2] << " ";
+    }
+    std::cout << std::endl;
+    for (size_t idx = 0; idx < order; ++idx) {
+        std::cout << "**d " << sg1.d[S_a+idx] << " " << S_a+idx << "|" << sg1.e[sg1.v[S_a+idx]] << "  " << sg1.e[sg1.v[S_a+idx]+1] << "  " << sg1.e[sg1.v[S_a+idx]+2] << " ";
+    }
+    std::cout << std::endl;
+    for (size_t idx = 0; idx < order*order; ++idx) {
+        std::cout << "**d " << sg1.d[A_c+idx] << " " << A_c+idx << "|" << sg1.e[sg1.v[A_c+idx]] << "  " << sg1.e[sg1.v[A_c+idx]+1] << "  " << sg1.e[sg1.v[A_c+idx]+2] << " ";
+    }
+    std::cout << std::endl;
+}
+
+
+void
 Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int A_c, bool has_S)
 {
     // E to R, F, S, and T 
@@ -408,6 +436,11 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[E_e+idx]+2] = S_a+idx;
             sg1.e[sg1.v[S_a+idx]] = E_e+idx;
         }
+     /* debug print
+     std::cout << "Writing first pos " << sg1.v[E_e+idx] << " " << sg1.v[F_a+idx]
+               << " " << sg1.v[E_e+idx]+1 << " " << sg1.v[R_v+idx] << " " << sg1.v[E_e+idx]+2 << " " 
+               << " " << sg1.v[S_a+idx] << std::endl;
+    */
     }
 
     // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c
@@ -445,6 +478,11 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
 
                 sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
                 sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+                /* debug print
+                std::cout << "Writing pos " << sg1.v[A_c_el] << " " << sg1.v[F_a+f_arg]+F_a_pos[f_arg]
+                   << " " << sg1.v[A_c_el]+2 << " " << sg1.v[S_a+s_arg]+S_a_pos[s_arg]
+                   << " " << sg1.v[A_c_el]+1 << " " << sg1.v[R_v+cval]+R_v_pos[cval] << std::endl;
+                */
             
                 F_a_pos[f_arg]++;
                 S_a_pos[s_arg]++;
@@ -475,7 +513,7 @@ Model::build_graph()
     DYNALLSTAT(int,ptn,ptn_sz);
     DYNALLSTAT(int,orbits,orbits_sz);
     DYNALLSTAT(int,map,map_sz);
-    static DEFAULTOPTIONS_SPARSEGRAPH(options);
+    static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
     statsblk stats;
 
     /* Declare and initialize sparse graph structures */
@@ -485,6 +523,7 @@ Model::build_graph()
    /* Select option for canonical labelling */
 
     options.getcanon = TRUE;
+    options.defaultptn = FALSE;
 
     int mx = SETWORDSNEEDED(num_vertices);
     nauty_check(WORDSIZE,mx,num_vertices,NAUTYVERSIONID);
@@ -523,18 +562,29 @@ Model::build_graph()
 
     // color the graph
     color_graph(ptn, lab, ptn_sz, has_S);
+    /* debug print
+    std::cout << " space allocated: " << ptn_sz << " " << lab_sz << std::endl;
+    for (size_t idx=0; idx < ptn_sz; ++idx)
+        std::cout << ptn[idx] << " ";
+    std::cout << std::endl;
+    for (size_t idx=0; idx < lab_sz; ++idx) 
+        std::cout << lab[idx] << " ";
+    std::cout << std::endl;
+    */
 
     // edges
     build_edges(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
 
-    //debug print
+    // debug print
+    // debug_print_edges(sg1, E_e, F_a, S_a, R_v, A_c, has_S);
     // std::cout << graph_to_string(&sg1) << std::endl;
 
     // compute canonical form
     sparsenauty(&sg1,lab,ptn,orbits,&options,&stats,&cg1);
 
     // debug print
-    // std::cout << "done sparsenauty " << std::endl;
+    // std::cout << graph_to_string(&cg1) << std::endl;
+
     sortlists_sg(&cg1);
     // debug print
     // std::cout << graph_to_string(&cg1) << std::endl;

@@ -45,6 +45,9 @@ private:
     void build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
                      const int R_v, const int A_c, bool has_S);
 
+    void debug_print_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                     const int R_v, const int A_c, bool has_S);
+
     bool parse_unary(const std::string& line);
     bool parse_bin(std::istream& f);
     void parse_row(std::string& line, std::vector<size_t>& row);
