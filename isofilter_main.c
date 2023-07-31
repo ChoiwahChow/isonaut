@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "CLI11.hpp"
 #include "isofilter.h"
-#include "test_iso_graph.h"
 
 
 int
@@ -21,7 +20,7 @@ main(int argc, char *argv[])
     app.add_flag("-c", out_cg, "output canonical graph also")->default_val(false);
 
     CLI11_PARSE(app, argc, argv);
-    //test_iso_graph(2);
+
     IsoFilter filter(out_cg);
     filter.process_all_models();
 
