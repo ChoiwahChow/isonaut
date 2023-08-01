@@ -52,9 +52,9 @@ all : isonaut ;
 
 
 isonaut : nauty.h nausparse.h nauty_utils.h model.h isofilter.h CLI11.hpp \
-          nauty_utils.c model.c isofilter.c isofilter_main.c \
+          nauty_utils.cpp model.cpp isofilter.cpp main.cpp \
           ${GLIBS}
-	${CC} -o isonaut ${CFLAGS} nauty_utils.c model.c isofilter.c isofilter_main.c ${GLIBS} ${LDFLAGS}
+	${CC} -o isonaut ${CFLAGS} nauty_utils.cpp model.cpp isofilter.cpp main.cpp ${GLIBS} ${LDFLAGS}
 
 
 # @edit_msg@
