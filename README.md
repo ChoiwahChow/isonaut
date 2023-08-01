@@ -1,7 +1,7 @@
 # isonaut
 "isonaut" is a utility written in C++ to filter out isomorphic models using the graph isomorphism algorithm "nauty" (sparse mode).  It is available as a library and as an executable.
 
-## External Files
+## Dependencies
 Required from nauty 2.8.6: nauty.a, nauty.h, and nausparse.h.
 
 Additional requirement: CLI11.hpp.  See https://github.com/CLIUtils/CLI11.
