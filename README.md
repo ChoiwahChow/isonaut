@@ -25,3 +25,8 @@ isonaut < <model-file> > <output-file>
 ```
 The model input file <model-file> must be in mace4 output format.  If the `-c` option is specified in the command line, then in addition to the non-isomorphic models, the canonical graphs for the models are also printed out.
 
+## Limitations
+Currently, isonaut supports only unary and binary operations, and ignores operations of other arities, including constants (0-ary operations).
+
+
+
