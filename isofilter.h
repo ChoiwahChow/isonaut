@@ -10,24 +10,27 @@
 
 #include <iostream>
 #include <fstream>
-#include "nausparse.h"    /* which includes nauty.h */
-#include "nauty_utils.h"
 #include "model.h"
+
+struct Options {
+    bool out_cg;
+
+    Options() : out_cg(false) {};
+};
 
 
 class IsoFilter {
 private:
     std::vector<Model>               non_iso_vec;     // copy and assignment constructors for Model are needed if this vector is to be used
     std::unordered_set<std::string>  non_iso_hash;
-    bool out_cg;
+    Options opt;
 
 public:
     double  start_time;       // in micro sec
     double  start_cpu_time;   // in micro sec
 
 public:
-    IsoFilter(bool ocg) : out_cg(ocg) {};
-    IsoFilter(): out_cg(false) {};
+    IsoFilter(const Options& opt) : opt(opt) {};
 
     int  process_all_models();
 

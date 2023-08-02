@@ -1,8 +1,8 @@
 
 #include <sstream>
 #include <iostream>
-#include "isofilter.h"
 #include "nauty_utils.h"
+#include "isofilter.h"
 
 /*
 interpretation( 3, [number=1, seconds=0], [
@@ -36,7 +36,7 @@ IsoFilter::process_all_models()
             m.build_graph();
 
             if (is_non_iso_hash(m))
-                m.print_model(std::cout, out_cg);
+                m.print_model(std::cout, opt.out_cg);
         }
     }
     double total_cpu_time = read_cpu_time() - start_cpu_time;

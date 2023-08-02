@@ -35,7 +35,7 @@ typedef SG_WEIGHT sg_weight;
 #define CHECK_SWG(sg,id) do { if ((sg)->w) { fprintf(stderr, \
  ">E procedure %s does not accept weighted graphs\n",id); exit(1); } } while (0)
 
-typedef struct
+typedef struct sparsegraph
 {
     size_t nde;  /* Number of directed edges (loops contribute only 1) */
     size_t *v;   /* Array of indexes into e[*] */

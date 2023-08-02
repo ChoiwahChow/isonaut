@@ -13,9 +13,9 @@
 
 #include <iostream>
 #include <fstream>
-#include "nausparse.h"    /* which includes nauty.h */
-#include "nauty_utils.h"
 
+
+struct sparsegraph;
 
 class Model {
 public:
@@ -57,7 +57,8 @@ private:
 
 public:
     Model(): order(2) {};
-    ~Model() {SG_FREE(*cg);};
+    ~Model();
+    //~Model() {SG_FREE(*cg);};
 
     bool operator==(const Model& a) const;
     std::string  graph_to_string(sparsegraph* g) const;

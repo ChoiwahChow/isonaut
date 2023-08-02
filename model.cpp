@@ -1,8 +1,8 @@
 
 #include <sstream>
 #include <iostream>
-#include "isofilter.h"
 #include "nauty_utils.h"
+#include "model.h"
 
 /*
 interpretation( 3, [number=1, seconds=0], [
@@ -20,6 +20,10 @@ const std::string Model::Function_unary_label = "(_)";
 const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
+
+Model::~Model() {
+    SG_FREE(*cg);
+}
 
 std::string
 Model::graph_to_string(sparsegraph* g) const

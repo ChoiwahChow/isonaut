@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include "CLI11.hpp"
+#include "nauty_utils.h"
 #include "isofilter.h"
 
 
@@ -15,13 +16,13 @@ main(int argc, char *argv[])
 {
     
     CLI::App app("Lexicography smallest automorphic model.");
-    bool out_cg = false;
+    Options opt;
 
-    app.add_flag("-c", out_cg, "output canonical graph also")->default_val(false);
+    app.add_flag("-c", opt.out_cg, "output canonical graph also")->default_val(false);
 
     CLI11_PARSE(app, argc, argv);
 
-    IsoFilter filter(out_cg);
+    IsoFilter filter(opt);
     filter.process_all_models();
 
     exit(0);
