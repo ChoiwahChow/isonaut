@@ -19,7 +19,8 @@ int
 IsoFilter::process_all_models()
 {
     std::istream& fs = std::cin;
-    bool  done = false;
+    bool   done = false;
+    size_t models_count = 0;
 
     double start_cpu_time = read_cpu_time();
     unsigned start_wall_clock = read_wall_clock();
@@ -29,6 +30,7 @@ IsoFilter::process_all_models()
         if (line[0] == '%')
             continue; 
         if (line.find("interpretation") != std::string::npos) {
+            models_count++;
             Model m;
             m.fill_meta_data(line);
             m.parse_model(fs);
@@ -41,6 +43,7 @@ IsoFilter::process_all_models()
     }
     double total_cpu_time = read_cpu_time() - start_cpu_time;
     unsigned elapsed_time = read_wall_clock() - start_wall_clock;
+    std::cout << "% Number of models processed: " << models_count << std::endl;
     std::cout << "% Number of non-iso models: " << non_iso_hash.size() << std::endl;
     std::cout << "% Total CPU time: " << total_cpu_time << " seconds." << std::endl;
     std::cout << "% Elapsed time: " << elapsed_time << " seconds." << std::endl;
@@ -75,5 +78,13 @@ IsoFilter::is_non_iso_hash(const Model& model)
         return true;
     }
     return false;
+}
+
+
+bool
+IsoFilter::is_non_isomorphic(Model& m)
+{
+    bool is_non_iso = is_non_iso_hash(m);
+    return is_non_iso;
 }
 

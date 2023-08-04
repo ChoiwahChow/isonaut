@@ -1,6 +1,9 @@
 /* isofilter.h : isofiltering for Mace4 models. */
 /* Version 1.1, July 2023. */
 
+#ifndef ISOFILTER_H
+#define ISOFILTER_H
+
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <algorithm>
@@ -31,6 +34,9 @@ public:
 
 public:
     IsoFilter(const Options& opt) : opt(opt) {};
+    IsoFilter() {};
+
+    void set_options(Options& in_opt) { opt=in_opt; };
 
     int  process_all_models();
 
@@ -46,6 +52,8 @@ public:
         time_t t=time( (time_t *) NULL );
         return (unsigned) t;
     }
+    bool is_non_isomorphic(Model& m);
 };
 
+#endif
 

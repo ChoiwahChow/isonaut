@@ -7,6 +7,6 @@
 
 #include "nausparse.h"    /* which includes nauty.h */
 
-std::string put_sg_str(sparsegraph *sg, boolean digraph, int linelength = 10000000);
+std::string put_sg_str(sparsegraph *sg, const char* sep = "\n", boolean digraph = false, int linelength = 10000000);
 
 #endif

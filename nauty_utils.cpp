@@ -3,6 +3,7 @@
   version 2.8+
 */
 
+#include <iostream>
 #include "nauty_utils.h"
 
 
@@ -16,19 +17,21 @@
 *****************************************************************************/
 
 std::string
-put_sg_str(sparsegraph *sg, boolean digraph, int linelength)
+put_sg_str(sparsegraph *sg, const char* sep, boolean digraph, int linelength)
 {
     int *d,*e;
     int n,di;
-    int i,curlen,slen;
-    size_t *v,vi,j;
-    char s[12];
+    int curlen,slen;
+    size_t *v,vi;
+    char s[256];
     std::string graph_str;
 
     SG_VDE(sg,v,d,e);
     n = sg->nv;
 
-    for (i = 0; i < n; ++i)
+    // debug print
+    // std::cout << "put_sg_str debug num vertices: " << n << std::endl;
+    for (size_t i = 0; i < n; ++i)
     {
         vi = v[i];
         di = d[i];
@@ -36,17 +39,16 @@ put_sg_str(sparsegraph *sg, boolean digraph, int linelength)
         slen = itos(i+labelorg,s);
         graph_str.append(s);
         graph_str.append(" :");
-        //putstring(f,s);
-        //putstring(f," :");
         curlen = slen + 2;
 
-        for (j = 0; j < di; ++j)
+        for (size_t j = 0; j < di; ++j)
         {
             if (!digraph && e[vi+j] < i) continue;
             slen = itos(e[vi+j]+labelorg,s);
             if (linelength && curlen + slen + 1 >= linelength)
             {
-                graph_str.append("\n ");
+                graph_str.append(sep);
+                graph_str.append(" ");
                 //putstring(f,"\n ");
                 curlen = 2;
             }
@@ -56,7 +58,7 @@ put_sg_str(sparsegraph *sg, boolean digraph, int linelength)
             //putstring(f,s);
             curlen += slen + 1;
         }
-        graph_str.append("\n");
+        graph_str.append(sep);
         // PUTC('\n',f);
     }
     return graph_str;
