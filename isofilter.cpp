@@ -24,7 +24,7 @@ IsoFilter::process_all_models()
 
     if (!use_std) {
         filep.open(opt.file_name.c_str());
-std::cout << opt.file_name << std::endl;
+        // debug print: std::cout << opt.file_name << std::endl;
         fp = &filep;
     }
     std::istream& fs = *fp;
