@@ -17,9 +17,10 @@
 
 struct Options {
     bool        out_cg;
+    int         max_cache;
     std::string file_name;
 
-    Options() : out_cg(false) {};
+    Options() : out_cg(false), max_cache(-1) {};
 };
 
 
@@ -54,6 +55,7 @@ public:
         return (unsigned) t;
     }
     bool is_non_isomorphic(Model& m);
+    bool cache_exceeded() const { return opt.max_cache >= 0 && non_iso_hash.size() >= opt.max_cache; }
 };
 
 #endif

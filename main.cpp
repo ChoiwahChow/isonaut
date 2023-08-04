@@ -19,7 +19,8 @@ main(int argc, char *argv[])
     Options opt;
     
     app.add_option("file_name", opt.file_name, "file name")->default_val("-");
-    app.add_flag("-c", opt.out_cg, "output canonical graph also")->default_val(false);
+    app.add_flag("-c", opt.out_cg, "output canonical graphs also")->default_val(false);
+    app.add_flag("-m", opt.max_cache, "max num of canonical graphs (as string) in cache")->default_val(-1);
 
     CLI11_PARSE(app, argc, argv);
 

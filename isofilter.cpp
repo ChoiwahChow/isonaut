@@ -71,7 +71,8 @@ IsoFilter::is_non_iso(const Model& model)
             break;
         }
     }
-    if (non_iso) {
+    if (non_iso && 
+        (opt.max_cache < 0 || non_iso_hash.size() < opt.max_cache)) {
         non_iso_vec.push_back(model);
     }
     return non_iso;
@@ -84,8 +85,10 @@ IsoFilter::is_non_iso_hash(const Model& model)
     std::string canon_str = model.graph_to_string(model.cg);
 
     if (non_iso_hash.find(canon_str) == non_iso_hash.end()) {
-        //std::cout << "% found non-iso " << idx << std::endl;
-        non_iso_hash.insert(canon_str);
+        // std::cout << "% found non-iso max_cache: " << opt.max_cache << std::endl;   // debug print
+        if (opt.max_cache < 0 || non_iso_hash.size() < opt.max_cache)
+            non_iso_hash.insert(canon_str);
+        // std::cout << "% found non-iso cache size: " << non_iso_hash.size() << std::endl;   // debug print
         return true;
     }
     return false;
