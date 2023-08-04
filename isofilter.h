@@ -16,7 +16,8 @@
 #include "model.h"
 
 struct Options {
-    bool out_cg;
+    bool        out_cg;
+    std::string file_name;
 
     Options() : out_cg(false) {};
 };

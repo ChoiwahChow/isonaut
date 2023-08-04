@@ -17,7 +17,8 @@ main(int argc, char *argv[])
     
     CLI::App app("Lexicography smallest automorphic model.");
     Options opt;
-
+    
+    app.add_option("file_name", opt.file_name, "file name")->default_val("-");
     app.add_flag("-c", opt.out_cg, "output canonical graph also")->default_val(false);
 
     CLI11_PARSE(app, argc, argv);

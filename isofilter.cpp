@@ -18,7 +18,16 @@ Read line-by-line from a file
 int
 IsoFilter::process_all_models()
 {
-    std::istream& fs = std::cin;
+    const bool use_std = opt.file_name == "-";
+    std::istream* fp = &std::cin;
+    std::ifstream filep;
+
+    if (!use_std) {
+        filep.open(opt.file_name.c_str());
+std::cout << opt.file_name << std::endl;
+        fp = &filep;
+    }
+    std::istream& fs = *fp;
     bool   done = false;
     size_t models_count = 0;
 
@@ -41,6 +50,8 @@ IsoFilter::process_all_models()
                 m.print_model(std::cout, opt.out_cg);
         }
     }
+    if (!use_std)
+        filep.close();
     double total_cpu_time = read_cpu_time() - start_cpu_time;
     unsigned elapsed_time = read_wall_clock() - start_wall_clock;
     std::cout << "% Number of models processed: " << models_count << std::endl;
