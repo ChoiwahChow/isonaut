@@ -31,8 +31,10 @@ const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
 
-Model::Model(size_t odr, std::vector<std::vector<size_t>>& in_un_ops, std::vector<std::vector<std::vector<size_t>>>& in_bin_ops) 
-       : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops)
+Model::Model(size_t odr, std::vector<std::vector<size_t>>& in_un_ops, 
+             std::vector<std::vector<std::vector<size_t>>>& in_bin_ops,
+             std::vector<std::vector<std::vector<size_t>>>& in_bin_rels) 
+       : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels)
 {
     build_graph();
 }

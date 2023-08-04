@@ -60,7 +60,8 @@ private:
 
 public:
     Model(): order(2) {};
-    Model(size_t odr, std::vector<std::vector<size_t>>& un_ops, std::vector<std::vector<std::vector<size_t>>>& bin_ops);
+    Model(size_t odr, std::vector<std::vector<size_t>>& un_ops,
+          std::vector<std::vector<std::vector<size_t>>>& bin_ops, std::vector<std::vector<std::vector<size_t>>>& bin_rels);
     ~Model();
 
     bool operator==(const Model& a) const;
