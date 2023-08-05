@@ -20,7 +20,8 @@ main(int argc, char *argv[])
     
     app.add_option("file_name", opt.file_name, "file name")->default_val("-");
     app.add_flag("-c", opt.out_cg, "output canonical graphs also")->default_val(false);
-    app.add_flag("-m", opt.max_cache, "max num of canonical graphs (as string) in cache")->default_val(-1);
+    app.add_option("-m", opt.max_cache, "max num of canonical graphs (as string) in cache")->default_val(-1);
+    app.add_option("-k", opt.check_sym, "list of comma-separated func/relation symbols to check for isomorphism")->default_val("");
 
     CLI11_PARSE(app, argc, argv);
 

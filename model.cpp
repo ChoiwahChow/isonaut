@@ -34,13 +34,14 @@ const std::string Model::Model_stopper = "]).";
 Model::Model(size_t odr, std::vector<std::vector<size_t>>& in_un_ops, 
              std::vector<std::vector<std::vector<size_t>>>& in_bin_ops,
              std::vector<std::vector<std::vector<size_t>>>& in_bin_rels) 
-       : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels)
+       : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
 {
     build_graph();
 }
 
 Model::~Model() {
-    SG_FREE(*cg);
+    if (cg != 0)
+        SG_FREE(*cg);
 }
 
 std::string
@@ -64,12 +65,14 @@ Model::print_model(std::ostream& os, bool out_cg) const
         os << graph_to_string(cg);
 }
 
-void
+std::string
 Model::find_func_name(const std::string& func)
 {
     int start = func.find("(");
     int end = func.find("(", start+1);
-    op_symbols.push_back(func.substr(start+1, end-start-1));
+    std::string name = func.substr(start+1, end-start-1);
+    op_symbols.push_back(name);
+    return name;
 }
 
 void
@@ -106,30 +109,36 @@ debug_print(std::vector<std::vector<size_t>>& m)
 }
 
 bool
-Model::parse_model(std::istream& fs)
+Model::parse_model(std::istream& fs, const std::string& check_sym)
 {
     /*  The "interpretation" line is already parsed.
+     *  check_sym is a comma-delimited list of symbols to parse
         Returns true if success, false otherwise.
      */
     bool done = false;
-    while (!done) {
+    while (!done && fs) {
         std::string line;
         getline(fs, line);
         if (line[0] == '%')
             continue;
         bool is_func = line.find(Function_label) != std::string::npos;
         bool is_rel = line.find(Relation_label) != std::string::npos;
+        model_str.append(line);
+        model_str.append("\n");
         if (is_func || is_rel) {
-            model_str.append(line);
-            model_str.append("\n");
             int arity = find_arity(line);
-            find_func_name(line);
+	    std::string sym(",");
+	    sym.append(find_func_name(line));
+	    sym.append(",");
+	    bool ignore_op = false;
+	    if (!check_sym.empty() && check_sym.find(sym) == std::string::npos)
+                ignore_op = true;
             switch (arity) {
             case 1:
-                done = parse_unary(line);
+                done = parse_unary(line, ignore_op);
                 break;
             default:
-                done = parse_bin(fs, is_func);
+                done = parse_bin(fs, is_func, ignore_op);
             }
         }
     }
@@ -156,7 +165,7 @@ Model::parse_row(std::string& line, std::vector<size_t>& row)
 }
 
 bool
-Model::parse_unary(const std::string& line)
+Model::parse_unary(const std::string& line, bool ignore_op)
 {
     /* sample line:
        function('(_), [0,1,2 ]),
@@ -170,13 +179,14 @@ Model::parse_unary(const std::string& line)
     std::string row_str = line.substr(start+1, end - start - 1);
     std::vector<size_t> row;
     parse_row(row_str, row);
-    un_ops.push_back(row); 
+    if (!ignore_op)
+        un_ops.push_back(row); 
 
     return end_of_model;    
 }
 
 bool
-Model::parse_bin(std::istream& fs, bool is_func)
+Model::parse_bin(std::istream& fs, bool is_func, bool ignore_op)
 {
     /* This function parse a 2-d function or relation.
        The "[" token is already seen before coming to this function 
@@ -202,14 +212,18 @@ Model::parse_bin(std::istream& fs, bool is_func)
             if (line.find(Model_stopper) != std::string::npos)
                 end_model = true;
         }
-        parse_row(line, row);
-        two_d.push_back(row);
-        row.clear();
+	if (!ignore_op) {
+            parse_row(line, row);
+            two_d.push_back(row);
+            row.clear();
+	}
     }
-    if (is_func)
-        bin_ops.push_back(two_d);
-    else
-        bin_rels.push_back(two_d);
+    if (!ignore_op) {
+        if (is_func)
+            bin_ops.push_back(two_d);
+        else
+            bin_rels.push_back(two_d);
+    }
     return end_model;
 }
  
@@ -614,11 +628,13 @@ Model::build_graph()
         L represents the relation value (0/1 for false/true)
         A represents the operation table
      */
+    bool   has_rel = bin_rels.size() > 0;
+    bool   has_func = bin_ops.size() + un_ops.size() > 0;
+    if (!has_rel && !has_func)   // empty graph
+        return false;
     size_t num_vertices, num_edges;
     size_t max_arity = find_graph_size(num_vertices, num_edges);
     bool   has_S = max_arity > 1;
-    bool   has_rel = bin_rels.size() > 0;
-    bool   has_func = bin_ops.size() + un_ops.size() > 0;
     // debug print
     // std::cout << "num_vertices: " << num_vertices << " num_edges: " << num_edges << std::endl;
 

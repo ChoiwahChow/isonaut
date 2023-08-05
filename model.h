@@ -52,14 +52,14 @@ private:
     void   debug_print_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
                              const int R_v, const int A_c, bool has_S);
 
-    bool parse_unary(const std::string& line);
-    bool parse_bin(std::istream& f, bool is_func);
+    bool parse_unary(const std::string& line, bool ignore_op);
+    bool parse_bin(std::istream& f, bool is_func, bool ignore_op);
     void parse_row(std::string& line, std::vector<size_t>& row);
     int  find_arity(const std::string& func);
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ']', ' '); std::replace( s.begin(), s.end(), ',', ' '); };
 
 public:
-    Model(): order(2) {};
+    Model(): order(2), cg(0) {};
     Model(size_t odr, std::vector<std::vector<size_t>>& un_ops,
           std::vector<std::vector<std::vector<size_t>>>& bin_ops, std::vector<std::vector<std::vector<size_t>>>& bin_rels);
     ~Model();
@@ -71,9 +71,9 @@ public:
     void print_model(std::ostream&, bool out_cg=false) const;
 
     void fill_meta_data(const std::string& interp);
-    void find_func_name(const std::string& func);
+    std::string find_func_name(const std::string& func);
 
-    bool parse_model(std::istream& f);
+    bool parse_model(std::istream& f, const std::string& check_sym);
     bool build_graph();
 };
 

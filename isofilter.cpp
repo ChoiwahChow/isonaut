@@ -21,11 +21,16 @@ IsoFilter::process_all_models()
     const bool use_std = opt.file_name == "-";
     std::istream* fp = &std::cin;
     std::ifstream filep;
+    std::string   check_sym = opt.check_sym;
 
     if (!use_std) {
         filep.open(opt.file_name.c_str());
         // debug print: std::cout << opt.file_name << std::endl;
         fp = &filep;
+    }
+    if (!check_sym.empty()) {
+        check_sym.insert(0, ",");
+        check_sym.append(",");
     }
     std::istream& fs = *fp;
     bool   done = false;
@@ -42,9 +47,10 @@ IsoFilter::process_all_models()
             models_count++;
             Model m;
             m.fill_meta_data(line);
-            m.parse_model(fs);
+            m.parse_model(fs, check_sym);
 
-            m.build_graph();
+            if (!m.build_graph())  // is it empty graph?
+                continue; 
 
             if (is_non_iso_hash(m))
                 m.print_model(std::cout, opt.out_cg);
