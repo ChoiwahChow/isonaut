@@ -40,7 +40,7 @@ Model::Model(size_t odr, std::vector<std::vector<int>>& in_un_ops,
 }
 
 Model::~Model() {
-    if (cg != 0)
+    if (cg != nullptr)
         SG_FREE(*cg);
 }
 
