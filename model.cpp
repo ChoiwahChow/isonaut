@@ -31,9 +31,9 @@ const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
 
-Model::Model(size_t odr, std::vector<std::vector<size_t>>& in_un_ops, 
-             std::vector<std::vector<std::vector<size_t>>>& in_bin_ops,
-             std::vector<std::vector<std::vector<size_t>>>& in_bin_rels) 
+Model::Model(size_t odr, std::vector<std::vector<int>>& in_un_ops, 
+             std::vector<std::vector<std::vector<int>>>& in_bin_ops,
+             std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
        : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
 {
     build_graph();
@@ -98,7 +98,7 @@ Model::find_arity(const std::string& func)
 }
 
 void
-debug_print(std::vector<std::vector<size_t>>& m)
+debug_print(std::vector<std::vector<int>>& m)
 {
     for (size_t row = 0; row < m.size(); row++) {
         for (size_t col = 0; col < m[row].size(); col++) {
@@ -146,7 +146,7 @@ Model::parse_model(std::istream& fs, const std::string& check_sym)
 }
 
 void
-Model::parse_row(std::string& line, std::vector<size_t>& row)
+Model::parse_row(std::string& line, std::vector<int>& row)
 {
     /* input format:
          0,1,0,  or   0,1,0
@@ -177,7 +177,7 @@ Model::parse_unary(const std::string& line, bool ignore_op)
     size_t start = line.find("[");
     size_t end = line.find("]");
     std::string row_str = line.substr(start+1, end - start - 1);
-    std::vector<size_t> row;
+    std::vector<int> row;
     parse_row(row_str, row);
     if (!ignore_op)
         un_ops.push_back(row); 
@@ -198,8 +198,8 @@ Model::parse_bin(std::istream& fs, bool is_func, bool ignore_op)
     // TODO: add checking for correct # of rows etc
     bool done = false;
     bool end_model = false;
-    std::vector<std::vector<size_t>>  two_d;
-    std::vector<size_t>  row;
+    std::vector<std::vector<int>>  two_d;
+    std::vector<int>  row;
     while (!done && fs) {
         std::string line;
         getline(fs, line);
@@ -553,7 +553,7 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
             sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
-            size_t cval = un_ops[op][f_arg];
+            int cval = un_ops[op][f_arg];
             sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
             sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
             
@@ -566,7 +566,7 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
     for (size_t op=0; op < bin_ops.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
             for (size_t s_arg=0; s_arg < order; ++s_arg) {
-                size_t cval = bin_ops[op][f_arg][s_arg];
+                int cval = bin_ops[op][f_arg][s_arg];
                 sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
                 sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
@@ -598,7 +598,7 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
                 sg1.e[sg1.v[A_c_el]+2] = S_a + s_arg;
                 sg1.e[sg1.v[S_a+s_arg]+S_a_pos[s_arg]] = A_c_el; 
 
-                size_t cval = bin_rels[op][f_arg][s_arg];
+                int cval = bin_rels[op][f_arg][s_arg];
                 sg1.e[sg1.v[A_c_el]+1] = L_v + cval;
                 sg1.e[sg1.v[L_v+cval]+L_v_pos[cval]] = A_c_el; 
                 /* debug print
