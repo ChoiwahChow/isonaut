@@ -341,10 +341,13 @@ Model::color_vertices(int* ptn, int* lab, int ptn_sz)
 void
 Model::count_truth_values(std::vector<size_t>& L_v_count)
 {
+    // count number of times true or false appears in the relations tables.
+    // -1 means the cell is not occupied
     for (auto op : bin_rels) {
         for (auto row : op) {
             for (auto v : row) {
-                L_v_count[v]++;
+                if (v != -1)
+                    L_v_count[v]++;
             }
         }
     }
@@ -354,15 +357,18 @@ void
 Model::count_occurrences(std::vector<size_t>& R_v_count)
 {
     // count number of times a domain element appears in the op tables.
+    // -1 means the cell is not occupied
     for (auto op : un_ops) {
         for (auto v : op) {
-            R_v_count[v]++;
+            if (v != -1)
+                R_v_count[v]++;
         }
     }
     for (auto op : bin_ops) {
         for (auto row : op) {
             for (auto v : row) {
-                R_v_count[v]++;
+                if (v != -1)
+                    R_v_count[v]++;
             }
         }
     }
@@ -370,7 +376,8 @@ Model::count_occurrences(std::vector<size_t>& R_v_count)
         for (auto first_arg : op) {
             for (auto secord_arg : first_arg) {
                 for (auto v : secord_arg)  {
-                    R_v_count[v]++;
+                    if (v != -1)
+                        R_v_count[v]++;
                 }
             }
         }
@@ -425,7 +432,7 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
         }
     }
     // debug print
-    // std::cout << "debug: ************************ end R_pos: " << R_pos << "  A_c " << A_c << std::endl;
+    // std::cout << "debug: ending R_pos: " << R_pos << "  A_c " << A_c << std::endl;
 
     // set up vertices for rel values (true/false)
     if (bin_rels.size() > 0) {
@@ -554,11 +561,16 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
             int cval = un_ops[op][f_arg];
-            sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
-            sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+            if (cval == -1 ) {
+                sg1.d[A_c_el]--;
+            }
+            else {
+                sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
+                sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+                R_v_pos[cval]++;
+            }
             
             F_a_pos[f_arg]++;
-            R_v_pos[cval]++;
             A_c_el++;
         }
     }
@@ -566,24 +578,29 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
     for (size_t op=0; op < bin_ops.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
             for (size_t s_arg=0; s_arg < order; ++s_arg) {
-                int cval = bin_ops[op][f_arg][s_arg];
                 sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
                 sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
-                sg1.e[sg1.v[A_c_el]+2] = S_a + s_arg;
+                sg1.e[sg1.v[A_c_el]+1] = S_a + s_arg;
                 sg1.e[sg1.v[S_a+s_arg]+S_a_pos[s_arg]] = A_c_el; 
 
-                sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
-                sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+                int cval = bin_ops[op][f_arg][s_arg];
+		if (cval == -1) {
+                    sg1.d[A_c_el]--;
+                }
+                else {
+                    sg1.e[sg1.v[A_c_el]+2] = R_v + cval;
+                    sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+                    R_v_pos[cval]++;
+                }
                 /* debug print
                 std::cout << "Writing R pos " << sg1.v[A_c_el] << " " << sg1.v[F_a+f_arg]+F_a_pos[f_arg]
-                   << " " << sg1.v[A_c_el]+2 << " " << sg1.v[S_a+s_arg]+S_a_pos[s_arg]
-                   << " " << sg1.v[A_c_el]+1 << " " << sg1.v[R_v+cval]+R_v_pos[cval] << std::endl;
+                   << " " << sg1.v[A_c_el]+1 << " " << sg1.v[S_a+s_arg]+S_a_pos[s_arg]
+                   << " " << sg1.v[A_c_el]+2 << " " << sg1.v[R_v+cval]+R_v_pos[cval] << std::endl;
                 */
             
                 F_a_pos[f_arg]++;
                 S_a_pos[s_arg]++;
-                R_v_pos[cval]++;
                 A_c_el++;
             }
         }
@@ -595,21 +612,26 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
                 sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
                 sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
-                sg1.e[sg1.v[A_c_el]+2] = S_a + s_arg;
+                sg1.e[sg1.v[A_c_el]+1] = S_a + s_arg;
                 sg1.e[sg1.v[S_a+s_arg]+S_a_pos[s_arg]] = A_c_el; 
 
                 int cval = bin_rels[op][f_arg][s_arg];
-                sg1.e[sg1.v[A_c_el]+1] = L_v + cval;
-                sg1.e[sg1.v[L_v+cval]+L_v_pos[cval]] = A_c_el; 
+		if (cval == -1) {
+                    sg1.d[A_c_el]--;
+                }
+                else {
+                    sg1.e[sg1.v[A_c_el]+2] = L_v + cval;
+                    sg1.e[sg1.v[L_v+cval]+L_v_pos[cval]] = A_c_el; 
+                    L_v_pos[cval]++;
+                }
                 /* debug print
                 std::cout << A_c_el << " " << L_v+cval << " Writing L pos " << sg1.v[A_c_el] << " " << sg1.v[F_a+f_arg]+F_a_pos[f_arg]
-                   << " " << sg1.v[A_c_el]+2 << " " << sg1.v[S_a+s_arg]+S_a_pos[s_arg]
-                   << " " << sg1.v[A_c_el]+1 << " " << sg1.v[L_v+cval]+L_v_pos[cval] << std::endl;
+                   << " " << sg1.v[A_c_el]+1 << " " << sg1.v[S_a+s_arg]+S_a_pos[s_arg]
+                   << " " << sg1.v[A_c_el]+2 << " " << sg1.v[L_v+cval]+L_v_pos[cval] << std::endl;
                 */
             
                 F_a_pos[f_arg]++;
                 S_a_pos[s_arg]++;
-                L_v_pos[cval]++;
                 A_c_el++;
                 // debug print: std::cout << "Next pos: " << A_c_el << " F " << F_a_pos[f_arg] << " S " << S_a_pos[s_arg] << " L " <<  L_v_pos[cval] << std::endl;
             }
