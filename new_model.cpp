@@ -58,11 +58,11 @@ Model::operator==(const Model& a) const
 }
 
 void
-Model::print_model(std::ostream& os, const std::string& canon_str, bool out_cg) const
+Model::print_model(std::ostream& os, bool out_cg) const
 {
     os << model_str;
     if (out_cg)
-        os << canon_str << std::endl;
+        os << graph_to_string(cg);
 }
 
 std::string
@@ -232,7 +232,6 @@ size_t
 Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
 {
 
-    size_t num_ternary_ops = ternary_ops.size();
     size_t num_bin_ops = bin_ops.size();
     size_t num_bin_rels = bin_rels.size();
     size_t num_unary_ops = un_ops.size();
@@ -241,6 +240,10 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
     // vertices
     // vertices for domain elements
     num_vertices = 2 * order;  // vertices for E and F
+
+    // if function of arity of 1 and arity of 2 are both present
+    if (num_unary_ops > 0 && (num_bin_ops + num_bin_rels) > 0)
+        num_vertices += order;
 
     if (num_unary_ops + num_bin_ops > 0) 
         num_vertices += order;       // vertices for R
@@ -650,9 +653,10 @@ Model::build_graph()
         L represents the relation value (0/1 for false/true)
         A represents the operation table
      */
+    bool   has_func1 = un_ops.size() > 0;
     bool   has_rel = bin_rels.size() > 0;
-    bool   has_func = bin_ops.size() + un_ops.size() > 0;
-    if (!has_rel && !has_func)   // empty graph
+    bool   has_func2 = bin_ops.size() > 0;
+    if (!has_rel && !has_func1 && has_func2)   // empty graph
         return false;
     size_t num_vertices, num_edges;
     size_t max_arity = find_graph_size(num_vertices, num_edges);
@@ -756,7 +760,6 @@ Model::build_graph()
 
     cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
-    SG_FREE(cg1);
     return true;
 }
 

@@ -68,7 +68,7 @@ public:
     std::string  graph_to_string(sparsegraph* g, const char* sep = "\n") const;
     std::string  cg_to_string(const char* sep = "\n") { return graph_to_string(cg, sep); };
 
-    void print_model(std::ostream&, bool out_cg=false) const;
+    void print_model(std::ostream&, const std::string& canon_str, bool out_cg=false) const;
 
     void fill_meta_data(const std::string& interp);
     std::string find_func_name(const std::string& func);

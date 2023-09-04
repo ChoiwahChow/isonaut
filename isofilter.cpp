@@ -52,8 +52,9 @@ IsoFilter::process_all_models()
             if (!m.build_graph())  // is it empty graph?
                 continue; 
 
-            if (is_non_iso_hash(m))
-                m.print_model(std::cout, opt.out_cg);
+            std::string canon_str;
+            if (is_non_iso_hash(m, canon_str))
+                m.print_model(std::cout, canon_str, opt.out_cg);
         }
     }
     if (!use_std)
@@ -86,9 +87,13 @@ IsoFilter::is_non_iso(const Model& model)
 
 
 bool
-IsoFilter::is_non_iso_hash(const Model& model)
+IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
 {
-    std::string canon_str = model.graph_to_string(model.cg);
+    canon_str = model.graph_to_string(model.cg);
+
+    if (opt.compress) {
+        canon_str = compress(canon_str);
+    }
 
     if (non_iso_hash.find(canon_str) == non_iso_hash.end()) {
         // std::cout << "% found non-iso max_cache: " << opt.max_cache << std::endl;   // debug print
@@ -104,7 +109,49 @@ IsoFilter::is_non_iso_hash(const Model& model)
 bool
 IsoFilter::is_non_isomorphic(Model& m)
 {
-    bool is_non_iso = is_non_iso_hash(m);
+    std::string canon_str;
+    bool is_non_iso = is_non_iso_hash(m, canon_str);
     return is_non_iso;
 }
 
+
+std::string 
+IsoFilter::compress(const std::string& str, int compressionlevel) 
+{
+    z_stream zs;                        // z_stream is zlib's control structure
+    memset(&zs, 0, sizeof(zs));
+
+    if (deflateInit(&zs, compressionlevel) != Z_OK)
+        throw(std::runtime_error("deflateInit failed while compressing."));
+
+    zs.next_in = (Bytef*)str.data();
+    zs.avail_in = str.size();           // set the z_stream's input
+
+    int ret;
+    char outbuffer[10240];
+    std::string outstring;
+
+    // retrieve the compressed bytes blockwise
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(outbuffer);
+        zs.avail_out = sizeof(outbuffer);
+
+        ret = deflate(&zs, Z_FINISH);
+
+        if (outstring.size() < zs.total_out) {
+            // append the block to the output string
+            outstring.append(outbuffer,
+                             zs.total_out - outstring.size());
+        }
+    } while (ret == Z_OK);
+
+    deflateEnd(&zs);
+
+    if (ret != Z_STREAM_END) {          // an error occurred that was not EOF
+        std::ostringstream oss;
+        oss << "Exception during zlib compression: (" << ret << ") " << zs.msg;
+        throw(std::runtime_error(oss.str()));
+    }
+
+    return outstring;
+}

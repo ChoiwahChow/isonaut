@@ -13,15 +13,17 @@
 
 #include <iostream>
 #include <fstream>
+#include <zlib.h>
 #include "model.h"
 
 struct Options {
     bool        out_cg;
+    bool        compress;
     int         max_cache;
     std::string file_name;
     std::string check_sym;
 
-    Options() : out_cg(false), max_cache(-1) {};
+    Options() : out_cg(false), compress(false), max_cache(-1) {};
 };
 
 
@@ -44,7 +46,7 @@ public:
     int  process_all_models();
 
     bool is_non_iso(const Model&);    // for debugging only
-    bool is_non_iso_hash(const Model&);
+    bool is_non_iso_hash(const Model&, std::string& canon_str);
 
     static double read_cpu_time() {
         struct rusage ru;
@@ -57,6 +59,7 @@ public:
     }
     bool is_non_isomorphic(Model& m);
     bool cache_exceeded() const { return opt.max_cache >= 0 && non_iso_hash.size() >= opt.max_cache; }
+    std::string compress(const std::string& str, int compressionlevel = Z_BEST_COMPRESSION);
 };
 
 #endif
