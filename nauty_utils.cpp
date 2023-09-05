@@ -17,7 +17,7 @@
 *****************************************************************************/
 
 std::string
-put_sg_str(sparsegraph *sg, const char* sep, boolean digraph, int linelength)
+put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int linelength)
 {
     int *d,*e;
     int n,di;
@@ -38,8 +38,12 @@ put_sg_str(sparsegraph *sg, const char* sep, boolean digraph, int linelength)
         if (di == 0) continue;
         slen = itos(i+labelorg,s);
         graph_str.append(s);
-        graph_str.append(" :");
-        curlen = slen + 2;
+        if (!shorten) {
+            graph_str.append(" :");
+            curlen = slen + 2;
+        }
+        else
+            curlen= slen;
 
         for (size_t j = 0; j < di; ++j)
         {

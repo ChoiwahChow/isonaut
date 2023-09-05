@@ -52,9 +52,12 @@ IsoFilter::process_all_models()
             if (!m.build_graph())  // is it empty graph?
                 continue; 
 
-            std::string canon_str;
-            if (is_non_iso_hash(m, canon_str))
+            if (is_non_iso_hash(m)) {
+                std::string canon_str;
+                if (opt.out_cg)
+                    canon_str = m.cg_to_string();
                 m.print_model(std::cout, canon_str, opt.out_cg);
+            }
         }
     }
     if (!use_std)
@@ -87,18 +90,18 @@ IsoFilter::is_non_iso(const Model& model)
 
 
 bool
-IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
+IsoFilter::is_non_iso_hash(const Model& model)
 {
-    canon_str = model.graph_to_string(model.cg);
+    std::string shortened_str = model.graph_to_string(model.cg, "|", true);
 
     if (opt.compress) {
-        canon_str = compress(canon_str);
+        shortened_str = compress(shortened_str);
     }
 
-    if (non_iso_hash.find(canon_str) == non_iso_hash.end()) {
+    if (non_iso_hash.find(shortened_str) == non_iso_hash.end()) {
         // std::cout << "% found non-iso max_cache: " << opt.max_cache << std::endl;   // debug print
         if (opt.max_cache < 0 || non_iso_hash.size() < opt.max_cache)
-            non_iso_hash.insert(canon_str);
+            non_iso_hash.insert(shortened_str);
         // std::cout << "% found non-iso cache size: " << non_iso_hash.size() << std::endl;   // debug print
         return true;
     }
@@ -109,8 +112,7 @@ IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
 bool
 IsoFilter::is_non_isomorphic(Model& m)
 {
-    std::string canon_str;
-    bool is_non_iso = is_non_iso_hash(m, canon_str);
+    bool is_non_iso = is_non_iso_hash(m);
     return is_non_iso;
 }
 

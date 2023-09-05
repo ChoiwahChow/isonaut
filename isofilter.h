@@ -46,7 +46,7 @@ public:
     int  process_all_models();
 
     bool is_non_iso(const Model&);    // for debugging only
-    bool is_non_iso_hash(const Model&, std::string& canon_str);
+    bool is_non_iso_hash(const Model&);
 
     static double read_cpu_time() {
         struct rusage ru;

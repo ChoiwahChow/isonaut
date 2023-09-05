@@ -45,9 +45,9 @@ Model::~Model() {
 }
 
 std::string
-Model::graph_to_string(sparsegraph* g, const char* sep) const
+Model::graph_to_string(sparsegraph* g, const char* sep, bool shorten) const
 {
-    return put_sg_str(g, sep);
+    return put_sg_str(g, sep, shorten);
 }
 
 
