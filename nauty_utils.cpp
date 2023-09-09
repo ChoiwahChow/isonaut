@@ -24,6 +24,7 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
     int curlen,slen;
     size_t *v,vi;
     char s[256];
+    char h[256];
     std::string graph_str;
 
     SG_VDE(sg,v,d,e);
@@ -36,25 +37,28 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
         vi = v[i];
         di = d[i];
         if (di == 0) continue;
-        slen = itos(i+labelorg,s);
-        graph_str.append(s);
+        slen = itos(i+labelorg,h);
         if (!shorten) {
+            graph_str.append(h);
             graph_str.append(" :");
             curlen = slen + 2;
         }
-        else
-            curlen= slen;
 
         for (size_t j = 0; j < di; ++j)
         {
             if (!digraph && e[vi+j] < i) continue;
+            if (shorten && h[0] != '\0') {
+                graph_str.append(h);
+                curlen = slen;
+                h[0] = '\0';
+            }
             slen = itos(e[vi+j]+labelorg,s);
             if (linelength && curlen + slen + 1 >= linelength)
             {
                 graph_str.append(sep);
-                graph_str.append(" ");
+                // graph_str.append(" ");
                 //putstring(f,"\n ");
-                curlen = 2;
+                curlen = 1;
             }
             graph_str.append(" ");
             graph_str.append(s);
@@ -62,7 +66,8 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
             //putstring(f,s);
             curlen += slen + 1;
         }
-        graph_str.append(sep);
+        if (!shorten || h[0] == '\0')
+            graph_str.append(sep);
         // PUTC('\n',f);
     }
     return graph_str;

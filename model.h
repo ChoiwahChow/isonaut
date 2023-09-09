@@ -32,6 +32,7 @@ public:
     std::vector<std::vector<std::vector<int>>> bin_ops;
     std::vector<std::vector<std::vector<int>>> bin_rels;
     std::vector<std::vector<int>> un_ops;
+    std::vector<int> constants;
 
     std::vector<std::string>  op_symbols;
 
@@ -60,13 +61,13 @@ private:
 
 public:
     Model(): order(2), cg(0) {};
-    Model(size_t odr, std::vector<std::vector<int>>& un_ops,
+    Model(size_t odr, std::vector<int>& constants, std::vector<std::vector<int>>& un_ops,
           std::vector<std::vector<std::vector<int>>>& bin_ops, std::vector<std::vector<std::vector<int>>>& bin_rels);
     ~Model();
 
     bool operator==(const Model& a) const;
     std::string  graph_to_string(sparsegraph* g, const char* sep = "\n", bool shorten = false) const;
-    std::string  cg_to_string(const char* sep = "\n") { return graph_to_string(cg, sep); };
+    std::string  cg_to_string(const char* sep = "\n", bool shorten = false) { return graph_to_string(cg, sep); };
 
     void print_model(std::ostream&, const std::string& canon_str, bool out_cg=false) const;
 

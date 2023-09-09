@@ -31,10 +31,11 @@ const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
 
-Model::Model(size_t odr, std::vector<std::vector<int>>& in_un_ops, 
+Model::Model(size_t odr, std::vector<int>& constants,
+             std::vector<std::vector<int>>& in_un_ops, 
              std::vector<std::vector<std::vector<int>>>& in_bin_ops,
              std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
-       : order(odr), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
+       : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
 {
     build_graph();
 }
@@ -236,8 +237,13 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
     size_t num_bin_ops = bin_ops.size();
     size_t num_bin_rels = bin_rels.size();
     size_t num_unary_ops = un_ops.size();
-    size_t max_arity = num_bin_ops + num_bin_rels > 0 ? 2 : 1;
+    size_t num_constants = constants.size();
+    size_t max_arity = num_bin_ops + num_bin_rels > 0 ? 2 : (num_unary_ops > 0? 1 : 0);
 
+    if (max_arity == 0) {
+        std::cerr << "find_graph_size: no unary or binary op/relations, abourt." << std::endl;
+        return 0;
+    }
     // vertices
     // vertices for domain elements
     num_vertices = 2 * order;  // vertices for E and F
@@ -251,7 +257,9 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
     if (num_bin_rels > 0) {
         num_vertices += 2;   // for True and False
     }
+
     // vertices for op/relation tables
+    num_vertices += num_constants;
     num_vertices += num_unary_ops * order;
     num_vertices += (num_bin_ops + num_bin_rels) * order * order;
 
@@ -268,6 +276,7 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
         num_edges += order;     // undirected edge E to S
 
     // edges for op tables
+    num_edges += num_constants;
     num_edges += 2 * order * num_unary_ops;
     num_edges += 3 * order * order * (num_bin_rels + num_bin_ops);
 
@@ -318,6 +327,10 @@ Model::color_vertices(int* ptn, int* lab, int ptn_sz)
     }
  
     // op tables
+    for (auto op : constants) {
+        color_end += 1;
+        ptn[color_end-1] = 0;
+    }
     for (auto op : un_ops) {
         color_end += order;
         ptn[color_end-1] = 0;
@@ -330,11 +343,11 @@ Model::color_vertices(int* ptn, int* lab, int ptn_sz)
         color_end += order * order;
         ptn[color_end-1] = 0;
     }
-    // debug print
-    // std::cout << "color array size: " << color_end << " space allocated: " << ptn_sz << std::endl;
-    // for (size_t idx=0; idx < ptn_sz; ++idx)
-    //     std::cout << ptn[idx] << " ";
-    // std::cout << std::endl;
+    /* debug print
+    std::cout << "color array size: " << color_end << " space allocated: " << ptn_sz << std::endl;
+    for (size_t idx=0; idx < ptn_sz; ++idx)
+        std::cout << ptn[idx] << " ";
+    */
 }
 
 
@@ -358,6 +371,10 @@ Model::count_occurrences(std::vector<size_t>& R_v_count)
 {
     // count number of times a domain element appears in the op tables.
     // -1 means the cell is not occupied
+    for (auto v : constants) {
+        if (v != -1)
+            R_v_count[v]++;
+    }
     for (auto op : un_ops) {
         for (auto v : op) {
             if (v != -1)
@@ -372,7 +389,7 @@ Model::count_occurrences(std::vector<size_t>& R_v_count)
             }
         }
     }
-    for (auto op : ternary_ops) {  // not supported yet: 2023/07/26
+    for (auto op : ternary_ops) {  // not supported yet: 2023/09/10
         for (auto first_arg : op) {
             for (auto secord_arg : first_arg) {
                 for (auto v : secord_arg)  {
@@ -399,9 +416,10 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
     const size_t num_S = bin_ops.size() + bin_rels.size();
     const size_t num_T = ternary_ops.size();     // 7/29/2023, not supported yet
     bool has_S = num_S > 0;
-    bool has_R = (un_ops.size() + bin_ops.size()) > 0;
+    bool has_R = (constants.size() + un_ops.size() + bin_ops.size()) > 0;
 
-    const size_t E_outd = 1 + (has_S? 1 : 0) + (bin_ops.size() > 0? 1 : 0);    //num of out edges per vertex
+    // E points to first arg, second arg (if exists) and results (if exists)
+    const size_t E_outd = 1 + (has_S? 1 : 0) + (constants.size() + un_ops.size() + bin_ops.size() > 0? 1 : 0);    //num of out edges per vertex
     const size_t E_size = E_outd * order;
     const size_t F_outd = num_F + num_S * order + 1;  // out-degree of first arg
     const size_t F_size = F_outd * order;
@@ -444,9 +462,18 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
     }
 
     // set up vertices of op/rel tables
+    // vertices are arranged in ascending order of arity: constants, unary, binary, ...
     size_t A_c_el = A_c;
     size_t A_c_pos = R_pos;
 
+    // constants
+    for (auto u : constants) {
+        sg1.v[A_c_el] = A_c_pos;
+        sg1.d[A_c_el] = 1;
+        A_c_pos += sg1.d[A_c_el];
+        A_c_el++;
+    }
+ 
     // unary op tables
     for (auto op : un_ops) {
         for (auto cell : op) {
@@ -529,7 +556,7 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
         sg1.e[sg1.v[F_a+idx]] = E_e+idx;
         size_t epos = 1;
         // joining R and E
-        if (un_ops.size() + bin_ops.size() > 0) {
+        if (constants.size() + un_ops.size() + bin_ops.size() > 0) {
             sg1.e[sg1.v[E_e+idx]+epos] = R_v+idx;
             sg1.e[sg1.v[R_v+idx]] = E_e+idx;
             epos++;
@@ -540,8 +567,8 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             sg1.e[sg1.v[S_a+idx]] = E_e+idx;
             epos++;
         }
-         /* debug print
-         std::cout << "Writing first pos " << sg1.v[E_e+idx] << " " << sg1.v[F_a+idx]
+        /* debug print
+        std::cerr << "debug Writing first pos " << sg1.v[E_e+idx] << " " << sg1.v[F_a+idx]
                << " " << sg1.v[E_e+idx]+1 << " " << sg1.v[R_v+idx] << " " << sg1.v[E_e+idx]+2 << " " 
                << " " << sg1.v[S_a+idx] << std::endl;
         */
@@ -553,6 +580,18 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
     std::vector<size_t> S_a_pos(order, 1);   // First position of S_a points to E_e
     std::vector<size_t> R_v_pos(order, 1);   // First position of R_v points to E_e
     std::vector<size_t> L_v_pos(2, 0);       // L_v does not point to E_e
+
+    for (auto cval : constants) {
+        if (cval == -1 ) {
+            sg1.d[A_c_el]--;
+        }
+        else {
+            sg1.e[sg1.v[A_c_el]] = R_v + cval;
+            sg1.e[sg1.v[R_v+cval]+R_v_pos[cval]] = A_c_el; 
+            R_v_pos[cval]++;
+        }
+        A_c_el++;
+    }
 
     for (size_t op=0; op < un_ops.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
@@ -574,6 +613,8 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             A_c_el++;
         }
     }
+    // debug print
+    // std::cerr << "un ops done" << std::endl;
  
     for (size_t op=0; op < bin_ops.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
@@ -605,6 +646,8 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             }
         }
     }
+    // debug print
+    // std::cerr << "bin ops done" << std::endl;
 
     for (size_t op=0; op < bin_rels.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
@@ -637,12 +680,14 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
             }
         }
     }
+    // debug print
+    // std::cerr << "bin rels done" << std::endl;
 }
 
 bool
 Model::build_graph()
 {
-    /*  7/26/2023: supports only binary and unary operations
+    /*  8/26/2023: supports only constants, binary and unary operations
         E represents the domain elements
         F represents the first argument of an operation
         S represents the second argument of an operation
@@ -651,14 +696,18 @@ Model::build_graph()
         A represents the operation table
      */
     bool   has_rel = bin_rels.size() > 0;
-    bool   has_func = bin_ops.size() + un_ops.size() > 0;
+    bool   has_func = bin_ops.size() + un_ops.size() + constants.size() > 0;
     if (!has_rel && !has_func)   // empty graph
         return false;
     size_t num_vertices, num_edges;
     size_t max_arity = find_graph_size(num_vertices, num_edges);
+    if (max_arity < 1) {
+        std::cerr << "build_graph:  Does not support models with only constants" << std::endl;
+        return false;
+    }
     bool   has_S = max_arity > 1;
     // debug print
-    // std::cout << "num_vertices: " << num_vertices << " num_edges: " << num_edges << std::endl;
+    //std::cerr << "debug num_vertices: " << num_vertices << " num_edges: " << num_edges << std::endl;
 
     DYNALLSTAT(int,lab,lab_sz);
     DYNALLSTAT(int,ptn,ptn_sz);
@@ -679,7 +728,7 @@ Model::build_graph()
     int mx = SETWORDSNEEDED(num_vertices);
     nauty_check(WORDSIZE,mx,num_vertices,NAUTYVERSIONID);
     // debug print
-    // std::cout << "WORDSIZE " << WORDSIZE << " return value for SETWORDSNEEDED(num_vertices) " << mx << std::endl;
+    // std::cout << "debug: WORDSIZE " << WORDSIZE << " return value for SETWORDSNEEDED(num_vertices) " << mx << std::endl;
 
     DYNALLOC1(int,lab,lab_sz,num_vertices,"malloc");
     DYNALLOC1(int,ptn,ptn_sz,num_vertices,"malloc");
@@ -687,7 +736,7 @@ Model::build_graph()
     DYNALLOC1(int,map,map_sz,num_vertices,"malloc");
 
     // debug print
-    // std::cout << "lab_sz " << lab_sz  << " ptn_sz " << ptn_sz << " orbits_sz " << orbits_sz << " map_sz " << map_sz << std::endl;
+    // std::cerr << "debug lab_sz " << lab_sz  << " ptn_sz " << ptn_sz << " orbits_sz " << orbits_sz << " map_sz " << map_sz << std::endl;
 
     // make the graph
     SG_ALLOC(sg1,num_vertices,num_edges,"malloc");
@@ -719,7 +768,7 @@ Model::build_graph()
     const int  A_c = ptr;
 
     // debug print
-    // std::cout << "E R L F S A: " << E_e << " " << R_v << " " << L_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
+    //std::cerr << "debug E R L F S A: " << E_e << " " << R_v << " " << L_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
 
     // vertices
     build_vertices(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
@@ -727,32 +776,31 @@ Model::build_graph()
     // color the graph
     color_vertices(ptn, lab, ptn_sz);
     /* debug print
-    // std::cout << " space allocated: " << ptn_sz << " " << lab_sz << std::endl;
+    std::cerr << " debug space allocated: " << ptn_sz << " " << lab_sz << std::endl;
     for (size_t idx=0; idx < lab_sz; ++idx) 
         std::cout << lab[idx] << " ";
     std::cout << std::endl;
     for (size_t idx=0; idx < ptn_sz; ++idx)
         std::cout << ptn[idx] << " ";
-    std::cout << std::endl;
+    std::cerr << std::endl;
     */
 
     // edges
     build_edges(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
-
     /* debug print
     // debug_print_edges(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
-    std::cout << "sg1:\n" << graph_to_string(&sg1) << std::endl;
+    std::cerr << "debug sg1:\n" << graph_to_string(&sg1) << std::endl;
     */
 
     // compute canonical form
     sparsenauty(&sg1,lab,ptn,orbits,&options,&stats,&cg1);
 
     // debug print
-    // std::cout << graph_to_string(&cg1) << std::endl;
+    // std::cerr << "debug, graph string: " << graph_to_string(&cg1) << std::endl;
 
     sortlists_sg(&cg1);
     // debug print
-    // std::cout << graph_to_string(&cg1) << std::endl;
+    // std::cerr << "debug, cg string: " << std::endl;  // << graph_to_string(&cg1) << std::endl;
 
     cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);

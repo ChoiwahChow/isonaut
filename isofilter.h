@@ -20,10 +20,11 @@ struct Options {
     bool        out_cg;
     bool        compress;
     int         max_cache;
+    bool        shorten_str;
     std::string file_name;
     std::string check_sym;
 
-    Options() : out_cg(false), compress(false), max_cache(-1) {};
+    Options() : out_cg(false), compress(false), max_cache(-1), shorten_str(false) {};
 };
 
 
