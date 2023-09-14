@@ -47,7 +47,7 @@ public:
     int  process_all_models();
 
     bool is_non_iso(const Model&);    // for debugging only
-    bool is_non_iso_hash(const Model&);
+    bool is_non_iso_hash(const Model&, std::string&);
 
     static double read_cpu_time() {
         struct rusage ru;
@@ -58,7 +58,7 @@ public:
         time_t t=time( (time_t *) NULL );
         return (unsigned) t;
     }
-    bool is_non_isomorphic(Model& m);
+    bool is_non_isomorphic(Model& m, std::string& shortened_str);
     bool cache_exceeded() const { return opt.max_cache >= 0 && non_iso_hash.size() >= opt.max_cache; }
     std::string compress(const std::string& str, int compressionlevel = Z_BEST_COMPRESSION);
 };

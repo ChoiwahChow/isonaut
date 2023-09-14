@@ -52,8 +52,8 @@ IsoFilter::process_all_models()
             if (!m.build_graph())  // is it empty graph?
                 continue; 
 
-            if (is_non_iso_hash(m)) {
-                std::string canon_str;
+            std::string canon_str;
+            if (is_non_iso_hash(m, canon_str)) {
                 if (opt.out_cg)
                     canon_str = m.cg_to_string("\n", opt.shorten_str);
                 m.print_model(std::cout, canon_str, opt.out_cg);
@@ -90,9 +90,9 @@ IsoFilter::is_non_iso(const Model& model)
 
 
 bool
-IsoFilter::is_non_iso_hash(const Model& model)
+IsoFilter::is_non_iso_hash(const Model& model, std::string& shortened_str)
 {
-    std::string shortened_str = model.graph_to_string(model.cg, "|", opt.shorten_str);
+    shortened_str = model.graph_to_string(model.cg, "|", opt.shorten_str);
 
     if (opt.compress) {
         shortened_str = compress(shortened_str);
@@ -110,9 +110,9 @@ IsoFilter::is_non_iso_hash(const Model& model)
 
 
 bool
-IsoFilter::is_non_isomorphic(Model& m)
+IsoFilter::is_non_isomorphic(Model& m, std::string& shortened_str)
 {
-    bool is_non_iso = is_non_iso_hash(m);
+    bool is_non_iso = is_non_iso_hash(m, shortened_str);
     return is_non_iso;
 }
 

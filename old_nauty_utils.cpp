@@ -38,40 +38,16 @@ compress_str(size_t label, char* buf) {
 }
 
 
-static const char* const trans_sp = "abcdefghij";
-static const char* const trans_line = "klmnopqrst";
-static const char* const base32_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-_+=,.";
-
-static size_t
-compress(size_t num, char* buf, const char* trans)
-{
-    size_t label = num;
-    int remainder = -1;
-    if (label > 99 && label < 1000) {
-        remainder = label % 100;
-        if (remainder > 31) 
-            remainder = -1;
-        else
-            label = label / 100;
-    }
-    int slen = itos(label,buf);
-    buf[0] = trans[buf[0] - '0'];
-    if (remainder > -1) {
-        buf[1] = base32_str[remainder];
-        buf[2] = '\0';
-        ++slen;
-    }
-    return slen;
-}
+static char* trans_sp = 'abcdefghij";
+static char* trans_line = 'klmnopqrst";
 
 static size_t
 compress_str_space(size_t label, char* buf) {
-    return compress(label, buf, trans_sp);
-}
-
-static size_t
-compress_str_line(size_t label, char* buf) {
-    return compress(label, buf, trans_line);
+    size_t slen = 0;
+    
+    slen = itos(i+labelorg,buf);
+    buf[0] = trans[buf[0] - '0'];
+    return slen;
 }
 
 std::string
@@ -96,8 +72,7 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
         di = d[i];
         if (di == 0) continue;
         // slen = itos(i+labelorg,h);
-        // slen = compress_str(i+labelorg,h);
-        slen = compress_str_line(i+labelorg,h);
+        slen = compress_str(i+labelorg,h);
         if (!shorten) {
             graph_str.append(h);
             graph_str.append(" :");
@@ -113,29 +88,21 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
                 h[0] = '\0';
             }
             //slen = itos(e[vi+j]+labelorg,s);
-            if (shorten)
-                slen = compress_str_space(e[vi+j]+labelorg,s);
-            else
-                slen = itos(e[vi+j]+labelorg,s);
-
-            if (!shorten) {
-                if (linelength && curlen + slen + 1 >= linelength)
-                {
-                    graph_str.append(sep);
-                    // graph_str.append(" ");
-                    //putstring(f,"\n ");
-                    curlen = 1;
-                 }
+            slen = compress_str(e[vi+j]+labelorg,s);
+            if (linelength && curlen + slen + 1 >= linelength)
+            {
+                graph_str.append(sep);
+                // graph_str.append(" ");
+                //putstring(f,"\n ");
+                curlen = 1;
             }
-
-            if (!shorten)
-                graph_str.append(" ");
+            graph_str.append(" ");
             graph_str.append(s);
             //PUTC(' ',f);
             //putstring(f,s);
-            // curlen += slen + 1;
+            curlen += slen + 1;
         }
-        if (!shorten)
+        if (!shorten || h[0] == '\0')
             graph_str.append(sep);
         // PUTC('\n',f);
     }
