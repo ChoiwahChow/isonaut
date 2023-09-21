@@ -17,7 +17,8 @@
 *****************************************************************************/
 
 
-static const char* const base64_str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+// static const char* const base64_str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+static const char* const base64_str = "uvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~`!@#$%^&*()-_+=,./<>?:;'{}[]|\"\\";
 
 static size_t
 compress_str(size_t label, char* buf) {
@@ -40,7 +41,7 @@ compress_str(size_t label, char* buf) {
 
 static const char* const trans_sp = "abcdefghij";
 static const char* const trans_line = "klmnopqrst";
-static const char* const base32_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-_+=,.";
+//static const char* const base32_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-_+=,.";
 
 static size_t
 compress(size_t num, char* buf, const char* trans)
@@ -49,7 +50,7 @@ compress(size_t num, char* buf, const char* trans)
     int remainder = -1;
     if (label > 99 && label < 1000) {
         remainder = label % 100;
-        if (remainder > 31) 
+        if (remainder > 64) // 31) 
             remainder = -1;
         else
             label = label / 100;
@@ -57,7 +58,7 @@ compress(size_t num, char* buf, const char* trans)
     int slen = itos(label,buf);
     buf[0] = trans[buf[0] - '0'];
     if (remainder > -1) {
-        buf[1] = base32_str[remainder];
+        buf[1] = base64_str[remainder];   // base32_str[remainder];
         buf[2] = '\0';
         ++slen;
     }

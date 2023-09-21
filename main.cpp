@@ -5,6 +5,10 @@
 
 // #include "nausparse.h"    /* which includes nauty.h */
 
+
+#include <sys/resource.h>
+#include <sys/time.h>
+
 #include <stdlib.h>
 #include "CLI11.hpp"
 #include "nauty_utils.h"
@@ -29,6 +33,11 @@ main(int argc, char *argv[])
 
     IsoFilter filter(opt);
     filter.process_all_models();
+
+  struct rusage usage;
+  int ret = getrusage(RUSAGE_THREAD, &usage);
+
+  std::cerr << "\nMaximum resident size: " << usage.ru_maxrss/1000000.0 << " GB" << std::endl;
 
     exit(0);
 }
