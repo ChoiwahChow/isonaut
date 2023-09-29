@@ -19,7 +19,7 @@ The main output is the library libisonaut.a and the isofiltering program isonaut
 
 The stand-alone executable, `isonaut`, can be used to filter out isomorphic models in a file.
 
-## Using the Eecutable isonaut
+## Using the Executable Isonaut
 ```text
 isonaut <model-file> > <output-file>
 ```
