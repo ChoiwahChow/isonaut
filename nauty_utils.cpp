@@ -4,6 +4,7 @@
 */
 
 #include <iostream>
+#include <cctype>
 #include "nauty_utils.h"
 
 
@@ -17,15 +18,18 @@
 *****************************************************************************/
 
 
-// static const char* const base64_str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
-static const char* const base64_str = "uvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~`!@#$%^&*()-_+=,./<>?:;'{}[]|\"\\";
+//static const char* const base64_str = "uvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~`!@#$%^&*()-_+=,./<>?:;'{}[]|\"\\";
+
+static const char* const base64_str = "0123456789klmnopqrstuvwxyzKLMNOPQRSTUVWXYZ!*()-_+=[]{}|<>,.?/:;'";
+static const char* const trans_sp = "abcdefghij";
+static const char* const trans_line = "ABCDEFGHIJ";
 
 static size_t
-compress_str(size_t label, char* buf) {
+compress_str(size_t label, char* buf, const char* trans) {
     size_t slen = 0;
-    int r = label;
-    while (r >= 0) {
-        int q = -1;
+    int r = label / 10;
+    while (r > 0) {
+        int q = 0;
         if (r >= 64) {
             q = r / 64;
             r = r % 64;
@@ -34,15 +38,15 @@ compress_str(size_t label, char* buf) {
         ++slen;
         r = q;
     }
+    buf[slen] = trans[label % 10];
+    ++slen;
     buf[slen] = '\0';
     return slen;
 }
 
 
-static const char* const trans_sp = "abcdefghij";
-static const char* const trans_line = "klmnopqrst";
 //static const char* const base32_str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ-_+=,.";
-
+/*
 static size_t
 compress(size_t num, char* buf, const char* trans)
 {
@@ -64,15 +68,16 @@ compress(size_t num, char* buf, const char* trans)
     }
     return slen;
 }
+*/
 
 static size_t
 compress_str_space(size_t label, char* buf) {
-    return compress(label, buf, trans_sp);
+    return compress_str(label, buf, trans_sp);
 }
 
 static size_t
 compress_str_line(size_t label, char* buf) {
-    return compress(label, buf, trans_line);
+    return compress_str(label, buf, trans_line);
 }
 
 std::string
@@ -98,8 +103,10 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
         if (di == 0) continue;
         // slen = itos(i+labelorg,h);
         // slen = compress_str(i+labelorg,h);
-        slen = compress_str_line(i+labelorg,h);
-        if (!shorten) {
+        if (shorten)
+            slen = compress_str_space(i+labelorg,h);
+        else {
+            slen = itos(i+labelorg,h);
             graph_str.append(h);
             graph_str.append(" :");
             curlen = slen + 2;
@@ -136,7 +143,10 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
             //putstring(f,s);
             // curlen += slen + 1;
         }
-        if (!shorten)
+        if (shorten) {
+            graph_str[graph_str.size()-1] = toupper(graph_str[graph_str.size()-1]);  // change ending space to new line
+        }
+        else
             graph_str.append(sep);
         // PUTC('\n',f);
     }
