@@ -51,6 +51,12 @@ Model::graph_to_string(sparsegraph* g, const char* sep, bool shorten) const
     return put_sg_str(g, sep, shorten);
 }
 
+std::string
+Model::graph_to_shortened_string(sparsegraph* g) const
+{
+    return compressed_sg_str(order, g);
+}
+
 
 bool
 Model::operator==(const Model& a) const

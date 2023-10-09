@@ -21,6 +21,7 @@
 //static const char* const base64_str = "uvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~`!@#$%^&*()-_+=,./<>?:;'{}[]|\"\\";
 
 static const char* const base64_str = "0123456789klmnopqrstuvwxyzKLMNOPQRSTUVWXYZ!*()-_+=[]{}|<>,.?/:;'";
+static const char* const blank_str = "`";
 static const char* const trans_sp = "abcdefghij";
 static const char* const trans_line = "ABCDEFGHIJ";
 
@@ -153,3 +154,46 @@ put_sg_str(sparsegraph *sg, const char* sep, bool shorten, bool digraph, int lin
     return graph_str;
 }
 
+
+std::string
+compressed_sg_str(size_t order, sparsegraph *sg, bool digraph)
+{
+    int *d,*e;
+    int n,di;
+    int curlen,slen;
+    size_t *v,vi;
+    char s[256];
+    std::string graph_str;
+
+    SG_VDE(sg,v,d,e);
+    n = sg->nv;
+
+    // debug print
+    // std::cout << "compressed_sg_str debug num vertices: " << n << " order: " << order << std::endl;
+    for (size_t i = 0; i < n; ++i)
+    {
+        vi = v[i];
+        di = d[i];
+        if (di == 0) {
+            graph_str.append(blank_str);
+            continue;
+        }
+        bool empty = true;
+
+        for (size_t j = 0; j < di; ++j)
+        {
+            if (!digraph && e[vi+j] < i) continue;
+            slen = compress_str_space(e[vi+j]+labelorg,s);
+            graph_str.append(s);
+            empty = false;
+        }
+        if (empty)
+            graph_str.append(blank_str);
+        else
+            graph_str[graph_str.size()-1] = toupper(graph_str[graph_str.size()-1]);  // change ending space to new line
+       
+    }
+    while (graph_str[graph_str.size()-1] == *blank_str)
+        graph_str.erase(graph_str.size()-1);
+    return graph_str;
+}

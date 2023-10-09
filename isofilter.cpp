@@ -92,7 +92,7 @@ IsoFilter::is_non_iso(const Model& model)
 bool
 IsoFilter::is_non_iso_hash(const Model& model, std::string& shortened_str)
 {
-    shortened_str = model.graph_to_string(model.cg, "|", opt.shorten_str);
+    shortened_str = model.graph_to_shortened_string(model.cg);
 
     if (opt.compress) {
         shortened_str = compress(shortened_str);

@@ -67,6 +67,7 @@ public:
 
     bool operator==(const Model& a) const;
     std::string  graph_to_string(sparsegraph* g, const char* sep = "\n", bool shorten = false) const;
+    std::string  graph_to_shortened_string(sparsegraph* g) const;
     std::string  cg_to_string(const char* sep = "\n", bool shorten = false) { return graph_to_string(cg, sep); };
 
     void print_model(std::ostream&, const std::string& canon_str, bool out_cg=false) const;
