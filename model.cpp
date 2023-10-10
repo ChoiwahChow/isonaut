@@ -48,7 +48,8 @@ Model::Model(size_t odr, std::vector<int>& constants,
              std::vector<std::vector<int>>& in_un_ops, 
              std::vector<std::vector<std::vector<int>>>& in_bin_ops,
              std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
-       : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
+       : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), 
+         el_fixed_width(1), cg(nullptr)
 {
     set_width(odr);
     build_graph();
