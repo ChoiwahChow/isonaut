@@ -30,6 +30,19 @@ const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
+const std::string Model::spaceEnded = ":;<=>?[]{}";
+const std::string Model::truth_values = "()";  // ( for 0 or false, ) for 1 or true
+const char Model::Base64Table[] = {
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+  'w', 'x', 'y', 'z', '0', '1', '2', '3',
+  '4', '5', '6', '7', '8', '9', '+', '/'
+};
+
 
 Model::Model(size_t odr, std::vector<int>& constants,
              std::vector<std::vector<int>>& in_un_ops, 
@@ -804,13 +817,92 @@ Model::build_graph()
     // debug print
     // std::cerr << "debug, graph string: " << graph_to_string(&cg1) << std::endl;
 
+    for (size_t iptr = 0; iptr < order; ++iptr)
+        iso.push_back(lab[iptr]);
+
     sortlists_sg(&cg1);
     // debug print
     // std::cerr << "debug, cg string: " << std::endl;  // << graph_to_string(&cg1) << std::endl;
 
-    cg = copy_sg(&cg1, NULL);
+    // cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
     SG_FREE(cg1);
     return true;
+}
+
+size_t
+Model::compress_str(size_t label, std::string& str) const 
+{
+    size_t slen = 0;
+    int r = label / 10;
+    while (r > 0) {
+        int q = 0;
+        if (r >= 64) {
+            q = r / 64;
+            r = r % 64;
+        }
+        str += Base64Table[r];
+        ++slen;
+        r = q;
+    }
+    str += spaceEnded[label % 10];
+    ++slen;
+    return slen;
+}
+
+
+std::string
+Model::compress_cms() const
+{
+    std::vector<size_t> inv(order, 0);
+    // find inverse of the isomorphism that maps the vectors to canonical form
+    for (size_t v = 0; v < order; ++v)
+        inv[iso[v]] = v;
+
+    std::string cms;
+    for (auto bo : bin_ops) {
+        for (size_t r = 0; r < order; ++r) {
+            for (size_t c = 0; c < order; ++c) {
+                int v = inv[bo[iso[r]][iso[c]]];
+                if (v >= 0)
+                    compress_str(v, cms);
+                else
+                    cms += unassigned;
+            }
+        }
+        cms += op_end;
+    }
+    for (auto bo : bin_rels) {
+        for (size_t r = 0; r < order; ++r) {
+            for (size_t c = 0; c < order; ++c) {
+                int v = inv[bo[iso[r]][iso[c]]];
+                if (v >= 0)
+                    cms += truth_values[v];
+                else
+                    cms += unassigned;
+            }
+        }
+        cms += op_end;
+    }
+    for (auto uo : un_ops) {
+        for (size_t r = 0; r < order; ++r ) {
+            int v = inv[uo[iso[r]]];
+            if (v >= 0)
+                compress_str(v, cms);
+            else
+                cms += unassigned;
+        }
+        cms += op_end;
+    }
+    for (auto cst : constants) {
+        int v = inv[cst];
+        if (v >= 0)
+            compress_str(v, cms);
+        else
+            cms += unassigned;
+        cms += op_end;
+    }
+
+    return cms;
 }
 

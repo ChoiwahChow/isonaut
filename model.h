@@ -39,8 +39,17 @@ public:
     size_t       order;
     sparsegraph* cg;
     std::string  model_str;
+    std::vector<std::size_t>  iso;
 
 private:
+    static const char  Base64Table[];
+    static const std::string spaceEnded; 
+    static const char unassigned = ',';
+    static const char op_end = '.';
+    static const std::string truth_values;
+
+private:
+    size_t compress_str(size_t label, std::string& cms) const;
     size_t find_graph_size(size_t& num_vertices, size_t& num_edges);
     void   color_vertices(int* ptn, int* lab, int ptn_sz);
     void   count_occurrences(std::vector<size_t>& R_v_count);
@@ -77,6 +86,7 @@ public:
 
     bool parse_model(std::istream& f, const std::string& check_sym);
     bool build_graph();
+    std::string compress_cms() const;
 };
 
 #endif
