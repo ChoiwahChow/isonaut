@@ -30,8 +30,8 @@ const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
-const std::string Model::spaceEnded = ":;<=>?[]{}";
-const std::string Model::truth_values = "()";  // ( for 0 or false, ) for 1 or true
+// const std::string Model::spaceEnded = ":;<=>?[]{}";
+const std::string Model::truth_values = "01";  // 0 for false, 1 for true
 const char Model::Base64Table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
   'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -50,6 +50,7 @@ Model::Model(size_t odr, std::vector<int>& constants,
              std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
        : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), cg(0)
 {
+    set_width(odr);
     build_graph();
 }
 
@@ -96,12 +97,27 @@ Model::find_func_name(const std::string& func)
 }
 
 void
+Model::set_width(size_t order)
+{
+    size_t base = 64;
+    if (order > 64) {
+        base *= 64;
+        el_fixed_width++;
+        while (base < order)  {
+            el_fixed_width++;
+            base *= 64;
+        }
+    }
+}
+
+void
 Model::fill_meta_data(const std::string& interp)
 {
     int start = interp.find("( ");
     int end = interp.find(", ", start+1);
     std::stringstream ss(interp.substr(start+1, end-start-1));
     ss >> order;
+    set_width(order);
     model_str.append(interp);
     model_str.append("\n");
 }
@@ -831,22 +847,33 @@ Model::build_graph()
 }
 
 size_t
-Model::compress_str(size_t label, std::string& str) const 
+Model::compress_str(size_t label, size_t width, std::string& str) const 
 {
     size_t slen = 0;
-    int r = label / 10;
-    while (r > 0) {
-        int q = 0;
-        if (r >= 64) {
-            q = r / 64;
-            r = r % 64;
+    if (label >= 0) {
+        int r = label;
+        int q = 1;  // to start to loop
+        while (q > 0) {
+            if (r >= 64) {
+                q = r / 64;
+                r = r % 64;
+            }
+            else
+                q = 0;
+            str += Base64Table[r];
+            ++slen;
+            r = q;
         }
-        str += Base64Table[r];
         ++slen;
-        r = q;
     }
-    str += spaceEnded[label % 10];
-    ++slen;
+    else {
+        slen = 1;
+        str += unassigned;
+    }
+    while (slen < width) {
+        str += ' ';
+        ++slen;
+    }
     return slen;
 }
 
@@ -864,43 +891,31 @@ Model::compress_cms() const
         for (size_t r = 0; r < order; ++r) {
             for (size_t c = 0; c < order; ++c) {
                 int v = inv[bo[iso[r]][iso[c]]];
-                if (v >= 0)
-                    compress_str(v, cms);
-                else
-                    cms += unassigned;
+                compress_str(v, el_fixed_width, cms);
             }
         }
-        cms += op_end;
+        // cms += op_end;
     }
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
             for (size_t c = 0; c < order; ++c) {
                 int v = bo[iso[r]][iso[c]];
-                if (v >= 0)
-                    cms += truth_values[v];
-                else
-                    cms += unassigned;
+                compress_str(v, 1, cms);
             }
         }
-        cms += op_end;
+        //cms += op_end;
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
             int v = inv[uo[iso[r]]];
-            if (v >= 0)
-                compress_str(v, cms);
-            else
-                cms += unassigned;
+            compress_str(v, el_fixed_width, cms);
         }
-        cms += op_end;
+        // cms += op_end;
     }
     for (auto cst : constants) {
         int v = inv[cst];
-        if (v >= 0)
-            compress_str(v, cms);
-        else
-            cms += unassigned;
-        cms += op_end;
+        compress_str(v, el_fixed_width, cms);
+        // cms += op_end;
     }
 
     return cms;

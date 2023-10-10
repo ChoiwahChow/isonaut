@@ -37,6 +37,7 @@ public:
     std::vector<std::string>  op_symbols;
 
     size_t       order;
+    size_t       el_fixed_width;
     sparsegraph* cg;
     std::string  model_str;
     std::vector<std::size_t>  iso;
@@ -49,7 +50,8 @@ private:
     static const std::string truth_values;
 
 private:
-    size_t compress_str(size_t label, std::string& cms) const;
+    void   set_width(size_t order);
+    size_t compress_str(size_t label, size_t width, std::string& cms) const;
     size_t find_graph_size(size_t& num_vertices, size_t& num_edges);
     void   color_vertices(int* ptn, int* lab, int ptn_sz);
     void   count_occurrences(std::vector<size_t>& R_v_count);
@@ -69,7 +71,7 @@ private:
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ']', ' '); std::replace( s.begin(), s.end(), ',', ' '); };
 
 public:
-    Model(): order(2), cg(0) {};
+    Model(): order(2), el_fixed_width(1), cg(nullptr) {};
     Model(size_t odr, std::vector<int>& constants, std::vector<std::vector<int>>& un_ops,
           std::vector<std::vector<std::vector<int>>>& bin_ops, std::vector<std::vector<std::vector<int>>>& bin_rels);
     ~Model();
