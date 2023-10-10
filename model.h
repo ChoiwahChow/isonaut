@@ -44,14 +44,11 @@ public:
 
 private:
     static const char  Base64Table[];
-    static const std::string spaceEnded; 
     static const char unassigned = ',';
-    static const char op_end = '.';
-    static const std::string truth_values;
 
 private:
     void   set_width(size_t order);
-    size_t compress_str(size_t label, size_t width, std::string& cms) const;
+    size_t compress_str(int label, size_t width, std::string& cms) const;
     size_t find_graph_size(size_t& num_vertices, size_t& num_edges);
     void   color_vertices(int* ptn, int* lab, int ptn_sz);
     void   count_occurrences(std::vector<size_t>& R_v_count);

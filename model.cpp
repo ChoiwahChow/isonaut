@@ -30,8 +30,6 @@ const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
-// const std::string Model::spaceEnded = ":;<=>?[]{}";
-const std::string Model::truth_values = "01";  // 0 for false, 1 for true
 const char Model::Base64Table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
   'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -848,16 +846,19 @@ Model::build_graph()
 }
 
 size_t
-Model::compress_str(size_t label, size_t width, std::string& str) const 
+Model::compress_str(int label, size_t width, std::string& str) const 
 {
+    if (label < 0)
+        return 0;
+
     size_t slen = 0;
     if (label >= 0) {
         int r = label;
         int q = 1;  // to start to loop
         while (q > 0) {
             if (r >= 64) {
-                q = r / 64;
-                r = r % 64;
+                q = r >> 6;
+                r = r - (q << 6);
             }
             else
                 q = 0;
@@ -895,7 +896,6 @@ Model::compress_cms() const
                 compress_str(v, el_fixed_width, cms);
             }
         }
-        // cms += op_end;
     }
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
@@ -904,19 +904,16 @@ Model::compress_cms() const
                 compress_str(v, 1, cms);
             }
         }
-        //cms += op_end;
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
             int v = inv[uo[iso[r]]];
             compress_str(v, el_fixed_width, cms);
         }
-        // cms += op_end;
     }
     for (auto cst : constants) {
         int v = inv[cst];
         compress_str(v, el_fixed_width, cms);
-        // cms += op_end;
     }
 
     return cms;
