@@ -875,7 +875,7 @@ Model::compress_cms() const
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
             for (size_t c = 0; c < order; ++c) {
-                int v = inv[bo[iso[r]][iso[c]]];
+                int v = bo[iso[r]][iso[c]];
                 if (v >= 0)
                     cms += truth_values[v];
                 else
