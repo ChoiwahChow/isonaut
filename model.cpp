@@ -50,7 +50,7 @@ Model::Model(size_t odr, std::vector<int>& constants,
              std::vector<std::vector<std::vector<int>>>& in_bin_ops,
              std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
        : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), 
-         el_fixed_width(1), cg(nullptr)
+         el_fixed_width(1), cg(nullptr), num_unassigned(0)
 {
     set_width(odr);
     build_graph();
@@ -268,12 +268,43 @@ Model::parse_bin(std::istream& fs, bool is_func, bool ignore_op)
     }
     return end_model;
 }
- 
+
+size_t
+Model::count_unassigned()
+{
+    size_t count = 0;
+    for (auto v : constants) {
+        if (v == -1)
+            ++count;
+    }
+    for (auto op : un_ops) {
+        for (auto v : op) {
+            if (v == -1)
+                ++count;
+        }
+    }
+    for (auto op : bin_ops) {
+        for (auto row : op) {
+            for (auto v : row) {
+                if (v == -1)
+                    ++count;
+            }
+        }
+    }
+    for (auto op : bin_rels) {
+        for (auto row : op) {
+            for (auto v : row) {
+                if (v == -1)
+                    ++count;
+            }
+        }
+    }
+    return count;    
+}
 
 size_t
 Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
 {
-
     size_t num_ternary_ops = ternary_ops.size();
     size_t num_bin_ops = bin_ops.size();
     size_t num_bin_rels = bin_rels.size();
@@ -298,6 +329,10 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
     if (num_bin_rels > 0) {
         num_vertices += 2;   // for True and False
     }
+
+    // uassigned vertex
+    if (num_unassigned > 0)
+        num_vertices++;
 
     // vertices for op/relation tables
     num_vertices += num_constants;
@@ -331,7 +366,7 @@ Model::find_graph_size(size_t& num_vertices, size_t& num_edges)
 void
 Model::color_vertices(int* ptn, int* lab, int ptn_sz)
 {
-    /*  vertices must be assigned in the order E, R, L, F, S, un_ops, bin_ops, bin_rels
+    /*  vertices must be assigned in the order E, R, L, U, F, S, un_ops, bin_ops, bin_rels
      */
     // colors
     for (size_t idx=0; idx < ptn_sz; ++idx) {
@@ -354,6 +389,10 @@ Model::color_vertices(int* ptn, int* lab, int ptn_sz)
     if (bin_rels.size() > 0) {
         color_end += 2;
         ptn[color_end-2] = 0;
+        ptn[color_end-1] = 0;
+    }
+    if (num_unassigned > 0) {
+        color_end++;
         ptn[color_end-1] = 0;
     }
 
@@ -442,32 +481,52 @@ Model::count_occurrences(std::vector<size_t>& R_v_count)
     }
 }
 
+size_t
+Model::count_unassigned_rels()
+{
+    size_t count = 0;
+    for (auto op : bin_rels) {
+        for (auto row : op ) {
+            for (auto v : row) {
+                if (v == -1)
+                    ++count;
+            }
+        }
+    }
+
+    return count;
+}
+
 void
-Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int L_v, const int A_c)
+Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
+                      const int R_v, const int L_v, const int U_v, const int A_c)
 {
     std::vector<size_t> R_v_count(order, 0);
     count_occurrences(R_v_count);
     std::vector<size_t> L_v_count(2, 0);
     count_truth_values(L_v_count);
+    size_t num_unassigned_rels = count_unassigned_rels();
 
-    // set up vertices for E, F, S, T, R and L
-    // each node in E points to F, S, T R and L and to each of the cells in a row
-    // S and T may not exist (ie. value zero)
-    const size_t num_F = un_ops.size();
+    // set up vertices for E, F, S, R, L, and U
+    // each node in E points to F, S, R and to each of the cells in a row
+    // E does not point to L (true/false, not domain elements), or unassigned
+    // L, U, and S may not exist (ie. value zero)
     const size_t num_S = bin_ops.size() + bin_rels.size();
-    const size_t num_T = ternary_ops.size();     // 7/29/2023, not supported yet
-    bool has_S = num_S > 0;
     bool has_R = (constants.size() + un_ops.size() + bin_ops.size()) > 0;
 
     // E points to first arg, second arg (if exists) and results (if exists)
-    const size_t E_outd = 1 + (has_S? 1 : 0) + (constants.size() + un_ops.size() + bin_ops.size() > 0? 1 : 0);    //num of out edges per vertex
+    const size_t E_outd = 1 + (num_S > 0? 1 : 0) + (has_R? 1 : 0);    //num of out edges per vertex
     const size_t E_size = E_outd * order;
-    const size_t F_outd = num_F + num_S * order + 1;  // out-degree of first arg
+    const size_t F_outd = un_ops.size() * 1 + num_S * order + 1;  // out-degree of first arg
     const size_t F_size = F_outd * order;
     const size_t S_outd = num_S * order + 1;          // out-degree of second arg
     const size_t S_size = num_S? S_outd * order : 0;
-    size_t L_pos = E_size + F_size + S_size;
-    const size_t L_size = bin_rels.size() * order * order;   // L (true/false) does not point back to E
+    // U may not exist
+    size_t U_pos = E_size + F_size + S_size;
+    const size_t U_size = num_unassigned;
+    size_t L_pos = U_pos + U_size;
+    // L may not exist
+    const size_t L_size = bin_rels.size() * order * order - num_unassigned_rels;   // L (true/false) does not point back to E
     size_t R_pos = L_pos + L_size;
 
     /* debug print
@@ -493,9 +552,15 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
     // debug print
     // std::cout << "debug: ending R_pos: " << R_pos << "  A_c " << A_c << std::endl;
 
+    // set up the vertex for unassigned
+    if (num_unassigned > 0) {
+        sg1.v[U_v] = U_pos;
+        sg1.d[U_v] = num_unassigned;
+    }
+
     // set up vertices for rel values (true/false)
     if (bin_rels.size() > 0) {
-        for( size_t idx=0; idx < 2; ++idx) {
+        for (size_t idx=0; idx < 2; ++idx) {
             sg1.v[L_v + idx] = L_pos; 
             sg1.d[L_v + idx] = L_v_count[idx];
             L_pos += sg1.d[L_v + idx];
@@ -554,8 +619,6 @@ Model::build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int 
     }
     // debug print
     // std::cout << "bin_rels. Domain element: " << A_c_el << " edge pos " << L_pos << " " << A_c_pos << std::endl;
-
-    // ternary op tables - not supported, 7/26/2023
 }
 
 void
@@ -587,12 +650,15 @@ Model::debug_print_edges(sparsegraph& sg1, const int E_e, const int F_a, const i
 
 
 void
-Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v, const int L_v, const int A_c)
+Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, const int R_v,
+                   const int L_v, const int U_v, const int A_c)
 {
+    // E and F always exist
     const size_t num_S = bin_ops.size() + bin_rels.size();
 
-    // E to R, F, S, and T 
+    // E to R, F, and S
     for (size_t idx = 0; idx < order; ++idx) {
+        // joining F and E
         sg1.e[sg1.v[E_e+idx]] = F_a+idx;
         sg1.e[sg1.v[F_a+idx]] = E_e+idx;
         size_t epos = 1;
@@ -615,16 +681,19 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
         */
     }
 
-    // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c or L_c
+    // A_abc, a*b=c ->  edges from A_abc to F_a, S_b, and R_c or L_c or U_v
     size_t A_c_el = A_c;
     std::vector<size_t> F_a_pos(order, 1);   // First position of F_a points to E_e
     std::vector<size_t> S_a_pos(order, 1);   // First position of S_a points to E_e
     std::vector<size_t> R_v_pos(order, 1);   // First position of R_v points to E_e
     std::vector<size_t> L_v_pos(2, 0);       // L_v does not point to E_e
+    size_t              U_v_pos = 0;         // U_v does not point to E_e
 
     for (auto cval : constants) {
         if (cval == -1 ) {
-            sg1.d[A_c_el]--;
+            sg1.e[sg1.v[A_c_el]] = U_v;
+            sg1.e[sg1.v[U_v]+U_v_pos] = A_c_el; 
+            U_v_pos++;
         }
         else {
             sg1.e[sg1.v[A_c_el]] = R_v + cval;
@@ -636,13 +705,14 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
 
     for (size_t op=0; op < un_ops.size(); ++op) {
         for (size_t f_arg=0; f_arg < order; ++f_arg) {
-
             sg1.e[sg1.v[A_c_el]] = F_a + f_arg;
             sg1.e[sg1.v[F_a+f_arg]+F_a_pos[f_arg]] = A_c_el; 
 
             int cval = un_ops[op][f_arg];
             if (cval == -1 ) {
-                sg1.d[A_c_el]--;
+                sg1.e[sg1.v[A_c_el]+1] = U_v;
+                sg1.e[sg1.v[U_v]+U_v_pos] = A_c_el; 
+                U_v_pos++;
             }
             else {
                 sg1.e[sg1.v[A_c_el]+1] = R_v + cval;
@@ -668,7 +738,9 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
 
                 int cval = bin_ops[op][f_arg][s_arg];
 		if (cval == -1) {
-                    sg1.d[A_c_el]--;
+                    sg1.e[sg1.v[A_c_el]+2] = U_v;
+                    sg1.e[sg1.v[U_v]+U_v_pos] = A_c_el; 
+                    U_v_pos++;
                 }
                 else {
                     sg1.e[sg1.v[A_c_el]+2] = R_v + cval;
@@ -701,7 +773,9 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
 
                 int cval = bin_rels[op][f_arg][s_arg];
 		if (cval == -1) {
-                    sg1.d[A_c_el]--;
+                    sg1.e[sg1.v[A_c_el]+2] = U_v;
+                    sg1.e[sg1.v[U_v]+U_v_pos] = A_c_el; 
+                    U_v_pos++;
                 }
                 else {
                     sg1.e[sg1.v[A_c_el]+2] = L_v + cval;
@@ -736,6 +810,8 @@ Model::build_graph()
         L represents the relation value (0/1 for false/true)
         A represents the operation table
      */
+    num_unassigned = count_unassigned();
+
     bool   has_rel = bin_rels.size() > 0;
     bool   has_func = bin_ops.size() + un_ops.size() + constants.size() > 0;
     if (!has_rel && !has_func)   // empty graph
@@ -790,6 +866,8 @@ Model::build_graph()
     // R_v+2 represents the same 2 (cell value) in the op table cell
     // A_c+2 represents the table cell (0, 2) (the cell position, not the value in the cell).
     // L_v+0,1 represents 0 or 1.  They cannot be renamed (moved) because they represents false/true
+    // U_v     represents unassigned value
+    // The vertices must be created the same order as in color_graph: E R L U F S const un_op bin_op bin_rel
     int        ptr = 0;
     const int  E_e = ptr;
     ptr += order;
@@ -800,6 +878,9 @@ Model::build_graph()
     const int  L_v = ptr;
     if (has_rel) ptr += 2;
 
+    const int U_v = ptr;
+    if (num_unassigned > 0) ptr++;
+
     const int  F_a = ptr;
     ptr += order;
 
@@ -809,10 +890,11 @@ Model::build_graph()
     const int  A_c = ptr;
 
     // debug print
-    //std::cerr << "debug E R L F S A: " << E_e << " " << R_v << " " << L_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
+    //std::cerr << "debug E R L U F S A: " << E_e << " " << R_v << " " << L_v << " " 
+    //            << U_v << " " << F_a << " " << S_a << " " << A_c << std::endl;
 
     // vertices
-    build_vertices(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
+    build_vertices(sg1, E_e, F_a, S_a, R_v, L_v, U_v, A_c);
 
     // color the graph
     color_vertices(ptn, lab, ptn_sz);
@@ -827,7 +909,7 @@ Model::build_graph()
     */
 
     // edges
-    build_edges(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
+    build_edges(sg1, E_e, F_a, S_a, R_v, L_v, U_v, A_c);
     /* debug print
     // debug_print_edges(sg1, E_e, F_a, S_a, R_v, L_v, A_c);
     std::cerr << "debug sg1:\n" << graph_to_string(&sg1) << std::endl;
@@ -905,7 +987,9 @@ Model::compress_cms() const
                 compress_str(v, el_fixed_width, cms);
             }
         }
-        //cms.push_back(op_end);
+        while (cms[cms.size()-1] == unassigned)
+            cms.erase(cms.length()-1);
+        cms.push_back(op_end);
     }
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
@@ -914,21 +998,28 @@ Model::compress_cms() const
                 compress_str(v, 1, cms);
             }
         }
-        //cms.push_back(op_end);
+        while (cms[cms.size()-1] == unassigned)
+            cms.erase(cms.length()-1);
+        cms.push_back(op_end);
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
             int v = inv[uo[iso[r]]];
             compress_str(v, el_fixed_width, cms);
         }
+        while (cms[cms.size()-1] == unassigned)
+            cms.erase(cms.length()-1);
+        cms.push_back(op_end);
     }
     for (auto cst : constants) {
         int v = inv[cst];
         compress_str(v, el_fixed_width, cms);
-        //cms.push_back(op_end);
+        while (cms[cms.size()-1] == unassigned)
+            cms.erase(cms.length()-1);
+        cms.push_back(op_end);
     }
-//    if (!cms.empty())
-//        cms.pop_back();
+    if (!cms.empty())
+        cms.pop_back();
 
     return cms;
 }

@@ -34,6 +34,7 @@ public:
     std::vector<std::vector<std::vector<int>>> bin_rels;
     std::vector<std::vector<int>> un_ops;
     std::vector<int> constants;
+    size_t num_unassigned;
 
     std::vector<std::string>  op_symbols;
 
@@ -55,10 +56,12 @@ private:
     void   color_vertices(int* ptn, int* lab, int ptn_sz);
     void   count_occurrences(std::vector<size_t>& R_v_count);
     void   count_truth_values(std::vector<size_t>& L_v_count);
+    size_t count_unassigned();
+    size_t count_unassigned_rels();
     void   build_vertices(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
-                          const int R_v, const int L_v, const int A_c);
+                          const int R_v, const int L_v, const int U_v, const int A_c);
     void   build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
-                       const int R_v, const int L_v, const int A_c);
+                       const int R_v, const int L_v, const int U_v, const int A_c);
 
     void   debug_print_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a, 
                              const int R_v, const int A_c, bool has_S);
@@ -70,7 +73,7 @@ private:
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ']', ' '); std::replace( s.begin(), s.end(), ',', ' '); };
 
 public:
-    Model(): order(2), el_fixed_width(1), cg(nullptr) {};
+    Model(): order(2), el_fixed_width(1), cg(nullptr), num_unassigned(0) {};
     Model(size_t odr, std::vector<int>& constants, std::vector<std::vector<int>>& un_ops,
           std::vector<std::vector<std::vector<int>>>& bin_ops, std::vector<std::vector<std::vector<int>>>& bin_rels);
     ~Model();
