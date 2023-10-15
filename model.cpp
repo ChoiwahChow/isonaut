@@ -25,11 +25,14 @@ Read line-by-line from a file
 const std::string Model::Interpretation_label = "interpretation";
 const std::string Model::Function_label = "function";
 const std::string Model::Relation_label = "relation";
+const std::string Model::Function_arity_label = "_";
 const std::string Model::Function_unary_label = "(_)";
 const std::string Model::Function_binary_label = "(_,_)";
 const std::string Model::Function_stopper = "])";
 const std::string Model::Model_stopper = "]).";
 
+// ; for model separator.
+// ? for unassigned.
 const char Model::Base64Table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
   'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -124,11 +127,13 @@ Model::fill_meta_data(const std::string& interp)
 int
 Model::find_arity(const std::string& func)
 {
-    size_t arity = 0;
+    size_t arity = 3;
     if (func.find(Function_binary_label) != std::string::npos)
         arity = 2;
     else if (func.find(Function_unary_label) != std::string::npos)
         arity = 1;
+    else if (func.find(Function_arity_label) == std::string::npos)
+        arity = 0;
     return arity;
 }
 
@@ -169,6 +174,8 @@ Model::parse_model(std::istream& fs, const std::string& check_sym)
 	    if (!check_sym.empty() && check_sym.find(sym) == std::string::npos)
                 ignore_op = true;
             switch (arity) {
+            case 0:
+                break;
             case 1:
                 done = parse_unary(line, ignore_op);
                 break;
@@ -848,8 +855,10 @@ Model::build_graph()
 size_t
 Model::compress_str(int label, size_t width, std::string& str) const 
 {
+/*
     if (label < 0)
         return 0;
+*/
 
     size_t slen = 0;
     if (label >= 0) {
@@ -896,6 +905,7 @@ Model::compress_cms() const
                 compress_str(v, el_fixed_width, cms);
             }
         }
+        //cms.push_back(op_end);
     }
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
@@ -904,6 +914,7 @@ Model::compress_cms() const
                 compress_str(v, 1, cms);
             }
         }
+        //cms.push_back(op_end);
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
@@ -914,7 +925,10 @@ Model::compress_cms() const
     for (auto cst : constants) {
         int v = inv[cst];
         compress_str(v, el_fixed_width, cms);
+        //cms.push_back(op_end);
     }
+//    if (!cms.empty())
+//        cms.pop_back();
 
     return cms;
 }

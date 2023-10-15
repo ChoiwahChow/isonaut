@@ -22,6 +22,7 @@ public:
     static const std::string Interpretation_label;
     static const std::string Function_label;
     static const std::string Relation_label;
+    static const std::string Function_arity_label;
     static const std::string Function_unary_label;
     static const std::string Function_binary_label;
     static const std::string Function_stopper;
@@ -43,8 +44,9 @@ public:
     std::vector<std::size_t>  iso;
 
 private:
-    static const char  Base64Table[];
-    static const char unassigned = ',';
+    static const char Base64Table[];
+    static const char unassigned = '?';
+    static const char op_end = ';';
 
 private:
     void   set_width(size_t order);
