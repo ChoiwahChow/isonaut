@@ -964,26 +964,35 @@ Model::compress_str(int label, size_t width, std::string& str) const
         str += unassigned;
     }
     while (slen < width) {
-        str += ' ';
+        str += padding;
         ++slen;
     }
     return slen;
 }
 
 
+int
+Model::get_cell_value(const std::vector<size_t>& inv, int val) 
+{
+    if (val >= 0)
+        return inv[val];
+    else
+        return val;
+}
+
 std::string
 Model::compress_cms() const
 {
     std::vector<size_t> inv(order, 0);
     // find inverse of the isomorphism that maps the vectors to canonical form
-    for (size_t v = 0; v < order; ++v)
+    for (size_t v = 0; v < order; ++v) 
         inv[iso[v]] = v;
 
     std::string cms;
     for (auto bo : bin_ops) {
         for (size_t r = 0; r < order; ++r) {
             for (size_t c = 0; c < order; ++c) {
-                int v = inv[bo[iso[r]][iso[c]]];
+                int v = get_cell_value(inv, bo[iso[r]][iso[c]]);
                 compress_str(v, el_fixed_width, cms);
             }
         }
@@ -1004,7 +1013,7 @@ Model::compress_cms() const
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
-            int v = inv[uo[iso[r]]];
+            int v = get_cell_value(inv, uo[iso[r]]);
             compress_str(v, el_fixed_width, cms);
         }
         while (cms[cms.size()-1] == unassigned)
@@ -1012,7 +1021,7 @@ Model::compress_cms() const
         cms.push_back(op_end);
     }
     for (auto cst : constants) {
-        int v = inv[cst];
+        int v = get_cell_value(inv, cst);
         compress_str(v, el_fixed_width, cms);
         while (cms[cms.size()-1] == unassigned)
             cms.erase(cms.length()-1);
@@ -1020,7 +1029,6 @@ Model::compress_cms() const
     }
     if (!cms.empty())
         cms.pop_back();
-
     return cms;
 }
 

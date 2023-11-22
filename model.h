@@ -47,6 +47,7 @@ public:
 private:
     static const char Base64Table[];
     static const char unassigned = '?';
+    static const char padding = '=';
     static const char op_end = ';';
 
 private:
@@ -71,6 +72,7 @@ private:
     void parse_row(std::string& line, std::vector<int>& row);
     int  find_arity(const std::string& func);
     void blankout(std::string& s) { std::replace( s.begin(), s.end(), ']', ' '); std::replace( s.begin(), s.end(), ',', ' '); };
+    static int  get_cell_value(const std::vector<size_t>& inv, int val);
 
 public:
     Model(): order(2), el_fixed_width(1), cg(nullptr), num_unassigned(0) {};
