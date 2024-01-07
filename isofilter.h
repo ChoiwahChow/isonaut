@@ -11,9 +11,12 @@
 #include <vector>
 #include <bits/stdc++.h>
 
+#include <ext/pb_ds/assoc_container.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <zlib.h>
+#include <ext/pb_ds/assoc_container.hpp>
 #include "model.h"
 
 struct Options {
@@ -33,13 +36,18 @@ private:
     std::vector<Model>               non_iso_vec;     // copy and assignment constructors for Model are needed if this vector is to be used
     std::unordered_set<std::string>  non_iso_hash;
     Options opt;
+    size_t branch_key;
+    __gnu_pbds::gp_hash_table<std::string, size_t> non_iso_hash_table;
+
+private:
+    size_t get_branch_key(const std::string& canon_str);
 
 public:
     double  start_time;       // in micro sec
     double  start_cpu_time;   // in micro sec
 
 public:
-    IsoFilter(const Options& opt) : opt(opt) {};
+    IsoFilter(const Options& opt) : opt(opt), branch_key(0) {};
     IsoFilter() {};
 
     void set_options(Options& in_opt) { opt=in_opt; };

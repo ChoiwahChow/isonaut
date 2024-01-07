@@ -980,6 +980,16 @@ Model::get_cell_value(const std::vector<size_t>& inv, int val)
         return val;
 }
 
+void
+Model::remove_unassigned(std::string& cms) const
+{
+    size_t pos = cms.find_first_not_of(unassigned);
+    if (pos != 0 && pos != std::string::npos) {
+        cms.erase(cms.begin(), cms.begin()+pos);
+    }
+    cms.push_back(op_end);
+}
+
 std::string
 Model::compress_cms() const
 {
@@ -996,9 +1006,10 @@ Model::compress_cms() const
                 compress_str(v, el_fixed_width, cms);
             }
         }
-        while (cms[cms.size()-1] == unassigned)
-            cms.erase(cms.length()-1);
-        cms.push_back(op_end);
+        //while (cms[cms.size()-1] == unassigned)
+        //    cms.erase(cms.length()-1);
+        remove_unassigned(cms);
+        //cms.push_back(op_end);
     }
     for (auto bo : bin_rels) {
         for (size_t r = 0; r < order; ++r) {
@@ -1007,25 +1018,28 @@ Model::compress_cms() const
                 compress_str(v, 1, cms);
             }
         }
-        while (cms[cms.size()-1] == unassigned)
-            cms.erase(cms.length()-1);
-        cms.push_back(op_end);
+        //while (cms[cms.size()-1] == unassigned)
+        //    cms.erase(cms.length()-1);
+        remove_unassigned(cms);
+        //cms.push_back(op_end);
     }
     for (auto uo : un_ops) {
         for (size_t r = 0; r < order; ++r ) {
             int v = get_cell_value(inv, uo[iso[r]]);
             compress_str(v, el_fixed_width, cms);
         }
-        while (cms[cms.size()-1] == unassigned)
-            cms.erase(cms.length()-1);
-        cms.push_back(op_end);
+        //while (cms[cms.size()-1] == unassigned)
+        //    cms.erase(cms.length()-1);
+        remove_unassigned(cms);
+        //cms.push_back(op_end);
     }
     for (auto cst : constants) {
         int v = get_cell_value(inv, cst);
         compress_str(v, el_fixed_width, cms);
-        while (cms[cms.size()-1] == unassigned)
-            cms.erase(cms.length()-1);
-        cms.push_back(op_end);
+        //while (cms[cms.size()-1] == unassigned)
+        //    cms.erase(cms.length()-1);
+        //cms.push_back(op_end);
+        remove_unassigned(cms);
     }
     if (!cms.empty())
         cms.pop_back();

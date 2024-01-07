@@ -88,6 +88,24 @@ IsoFilter::is_non_iso(const Model& model)
     return non_iso;
 }
 
+/*
+bool
+IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
+{
+    canon_str = model.compress_cms();
+    std::string prefix = canon_str.substr(0, canon_str.size()/2);
+    size_t prefix_key = get_branch_key(prefix);
+    std::string comp_str = std::to_string(prefix_key) + canon_str.substr(canon_str.size()/2, canon_str.size());
+    if (non_iso_hash.find(comp_str) == non_iso_hash.end()) {
+        // std::cerr << "% found non-iso max_cache: " << opt.max_cache << std::endl;   // debug print
+        if (opt.max_cache < 0 || non_iso_hash.size() < opt.max_cache)
+            non_iso_hash.insert(comp_str);
+        // std::cout << "% found non-iso cache size: " << non_iso_hash.size() << std::endl;   // debug print
+        return true;
+    }
+    return false;
+}
+*/
 
 bool
 IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
@@ -101,6 +119,19 @@ IsoFilter::is_non_iso_hash(const Model& model, std::string& canon_str)
         return true;
     }
     return false;
+}
+
+
+size_t
+IsoFilter::get_branch_key(const std::string& canon_str)
+{
+    auto item = non_iso_hash_table.find(canon_str);
+    if (item == non_iso_hash_table.end()) {
+        non_iso_hash_table.insert({canon_str, ++branch_key});
+        return branch_key;
+    }
+    else
+        return item->second;
 }
 
 
