@@ -53,6 +53,7 @@ private:
 private:
     void   set_width(size_t order);
     size_t compress_str(int label, size_t width, std::string& cms) const;
+    void   compress_small_str(bool is_even, int val, std::string& cms) const;
     size_t find_graph_size(size_t& num_vertices, size_t& num_edges);
     void   color_vertices(int* ptn, int* lab, int ptn_sz);
     void   count_occurrences(std::vector<size_t>& R_v_count);
