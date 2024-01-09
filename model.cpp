@@ -1020,13 +1020,16 @@ Model::compress_cms() const
                     compress_small_str(is_even, v, cms);
                     is_even = !is_even;
                 }
-                else
+                else 
                     compress_str(v, el_fixed_width, cms);
             }
         }
         //while (cms[cms.size()-1] == unassigned)
         //    cms.erase(cms.length()-1);
-        remove_unassigned(cms);
+        if (order <=8 || order >= 16)
+            remove_unassigned(cms);
+        else
+            cms.push_back(op_end);
         //cms.push_back(op_end);
     }
     for (auto bo : bin_rels) {
