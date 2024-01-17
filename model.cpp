@@ -993,13 +993,17 @@ Model::remove_unassigned(std::string& cms) const
 void
 Model::compress_small_str(bool is_even, int val, std::string& cms) const
 {
-    char x = 0;
+    unsigned char x = 0;
+    if (val < 0)
+        x = 0x0F;
+    else
+        x = val;
     if (is_even) {
-        x = val << 4;
+        x <<= 4;
         cms.push_back(x);
     }
     else
-        cms[cms.size() - 1] |= val;
+        cms[cms.size() - 1] |= x;
 }
 
 std::string
@@ -1016,7 +1020,7 @@ Model::compress_cms() const
         for (size_t r = 0; r < order; ++r) {
             for (size_t c = 0; c < order; ++c) {
                 int v = get_cell_value(inv, bo[iso[r]][iso[c]]);
-                if (order > 8 && order < 16) {
+                if (order > 4 && order < 16) {
                     compress_small_str(is_even, v, cms);
                     is_even = !is_even;
                 }
@@ -1026,10 +1030,10 @@ Model::compress_cms() const
         }
         //while (cms[cms.size()-1] == unassigned)
         //    cms.erase(cms.length()-1);
-        if (order <=8 || order >= 16)
-            remove_unassigned(cms);
-        else
+        if (order > 8 && order < 16)
             cms.push_back(op_end);
+        else
+            remove_unassigned(cms);
         //cms.push_back(op_end);
     }
     for (auto bo : bin_rels) {
