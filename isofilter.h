@@ -26,8 +26,9 @@ struct Options {
     bool        shorten_str;
     std::string file_name;
     std::string check_sym;
+    bool        test;
 
-    Options() : out_cg(false), compress(false), max_cache(-1), shorten_str(false) {};
+    Options() : out_cg(false), compress(false), max_cache(-1), shorten_str(false), test(false) {};
 };
 
 
@@ -69,6 +70,9 @@ public:
     bool is_non_isomorphic(Model& m, std::string& shortened_str);
     bool cache_exceeded() const { return opt.max_cache >= 0 && non_iso_hash.size() >= opt.max_cache; }
     std::string compress(const std::string& str, int compressionlevel = Z_BEST_COMPRESSION);
+
+    bool IsomorphicAlgebras(const Model& model1, const Model& model2) const;
+    void Test_IsomorphismAlgebras();
 };
 
 #endif

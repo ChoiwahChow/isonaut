@@ -72,6 +72,12 @@ IsoFilter::process_all_models()
 }
 
 bool
+IsoFilter::IsomorphicAlgebras(const Model& model1, const Model& model2) const
+{
+    return aresame_sg(model1.cg, model2.cg);
+}
+
+bool
 IsoFilter::is_non_iso(const Model& model)
 {
     bool non_iso = true;
@@ -183,3 +189,49 @@ IsoFilter::compress(const std::string& str, int compressionlevel)
 
     return outstring;
 }
+
+
+void
+IsoFilter::Test_IsomorphismAlgebras()
+{
+    std::ifstream filep;
+    filep.open(opt.file_name.c_str());
+    std::istream* fp = &filep;
+
+    std::string   check_sym = opt.check_sym;
+    if (!check_sym.empty()) {
+        check_sym.insert(0, ",");
+        check_sym.append(",");
+    }
+    std::istream& fs = *fp;
+    bool   done = false;
+    size_t models_count = 0;
+
+    double start_cpu_time = read_cpu_time();
+    unsigned start_wall_clock = read_wall_clock();
+    std::string line;
+    Model m1;
+    Model m2;
+    std::vector<Model*> m{&m1, &m2};
+   
+    while (!fs.eof() && models_count < 2) {
+        getline(fs, line);
+        if (line[0] == '%')
+            continue; 
+        if (line.find("interpretation") != std::string::npos) {
+            m[models_count]->fill_meta_data(line);
+            m[models_count]->parse_model(fs, check_sym);
+            m[models_count]->build_graph(true);
+            models_count++;
+        }
+    }
+    filep.close();
+    bool is_iso = IsomorphicAlgebras(m1, m2);
+
+    double total_cpu_time = read_cpu_time() - start_cpu_time;
+    unsigned elapsed_time = read_wall_clock() - start_wall_clock;
+    std::cout << "% The models are isomorphic:  " << is_iso << std::endl;
+    std::cout << "% Total CPU time: " << total_cpu_time << " seconds." << std::endl;
+    std::cout << "% Elapsed time: " << elapsed_time << " seconds." << std::endl;
+}
+

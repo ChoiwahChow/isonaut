@@ -28,11 +28,15 @@ main(int argc, char *argv[])
     app.add_option("-k", opt.check_sym, "list of comma-separated func/relation symbols to check for isomorphism")->default_val("");
     app.add_flag("-x", opt.compress, "compress the canonical graph string")->default_val(false);
     app.add_flag("-s", opt.shorten_str, "shortend canonical graph string")->default_val(false);
+    app.add_flag("-t", opt.test, "run isomorphismAlgebras")->default_val(false);
 
     CLI11_PARSE(app, argc, argv);
 
     IsoFilter filter(opt);
-    filter.process_all_models();
+    if (opt.test)
+        filter.Test_IsomorphismAlgebras();
+    else
+        filter.process_all_models();
 
   struct rusage usage;
   int ret = getrusage(RUSAGE_THREAD, &usage);

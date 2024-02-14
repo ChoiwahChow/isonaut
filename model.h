@@ -43,6 +43,7 @@ public:
     sparsegraph* cg;
     std::string  model_str;
     std::vector<std::size_t>  iso;
+    bool   save_cg;
 
 private:
     static const char Base64Table[];
@@ -77,9 +78,10 @@ private:
     void remove_unassigned(std::string&) const;
 
 public:
-    Model(): order(2), el_fixed_width(1), cg(nullptr), num_unassigned(0) {};
+    Model(): order(2), el_fixed_width(1), cg(nullptr), num_unassigned(0), save_cg(false) {};
     Model(size_t odr, std::vector<int>& constants, std::vector<std::vector<int>>& un_ops,
-          std::vector<std::vector<std::vector<int>>>& bin_ops, std::vector<std::vector<std::vector<int>>>& bin_rels);
+          std::vector<std::vector<std::vector<int>>>& bin_ops, std::vector<std::vector<std::vector<int>>>& bin_rels,
+          bool save_cg = false);
     ~Model();
 
     bool operator==(const Model& a) const;
@@ -93,7 +95,7 @@ public:
     std::string find_func_name(const std::string& func);
 
     bool parse_model(std::istream& f, const std::string& check_sym);
-    bool build_graph();
+    bool build_graph(bool save_cg = false);
     std::string compress_cms() const;
 };
 

@@ -48,12 +48,13 @@ const char Model::Base64Table[] = {
 Model::Model(size_t odr, std::vector<int>& constants,
              std::vector<std::vector<int>>& in_un_ops, 
              std::vector<std::vector<std::vector<int>>>& in_bin_ops,
-             std::vector<std::vector<std::vector<int>>>& in_bin_rels) 
+             std::vector<std::vector<std::vector<int>>>& in_bin_rels,
+             bool save_cg) 
        : order(odr), constants(constants), bin_ops(in_bin_ops), un_ops(in_un_ops), bin_rels(in_bin_rels), 
-         el_fixed_width(1), cg(nullptr), num_unassigned(0)
+         el_fixed_width(1), cg(nullptr), num_unassigned(0), save_cg(save_cg) 
 {
     set_width(odr);
-    build_graph();
+    build_graph(save_cg);
 }
 
 Model::~Model() {
@@ -800,7 +801,7 @@ Model::build_edges(sparsegraph& sg1, const int E_e, const int F_a, const int S_a
 }
 
 bool
-Model::build_graph()
+Model::build_graph(bool save_cg)
 {
     /*  8/26/2023: supports only constants, binary and unary operations
         E represents the domain elements
@@ -928,8 +929,9 @@ Model::build_graph()
     // debug print
     // std::cerr << "debug, cg string: " << std::endl;  // << graph_to_string(&cg1) << std::endl;
 
-    // cg = copy_sg(&cg1, NULL);
     SG_FREE(sg1);
+    if (save_cg)
+        cg = copy_sg(&cg1, NULL);
     SG_FREE(cg1);
     return true;
 }
