@@ -219,7 +219,7 @@ Model::parse_unary(const std::string& line, bool ignore_op)
 
     size_t start = line.find("[");
     size_t end = line.find("]");
-    std::string row_str = line.substr(start+1, end - start - 1);
+    std::string row_str = line.substr(start+1, end - start - 1) + " ";
     std::vector<int> row;
     parse_row(row_str, row);
     if (!ignore_op)
@@ -248,13 +248,15 @@ Model::parse_bin(std::istream& fs, bool is_func, bool ignore_op)
         getline(fs, line);
         if (line[0] == '%')
             continue;
-        model_str.append(line);
-        model_str.append("\n");
-        if (line.find(Function_stopper) != std::string::npos) {
+        size_t end_pos = line.find(Function_stopper);
+        if (end_pos != std::string::npos) {
             done = true;
+            line.insert(end_pos, " ");
             if (line.find(Model_stopper) != std::string::npos)
                 end_model = true;
         }
+        model_str.append(line);
+        model_str.append("\n");
 	if (!ignore_op) {
             parse_row(line, row);
             two_d.push_back(row);
