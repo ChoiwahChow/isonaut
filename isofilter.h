@@ -15,7 +15,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <zlib.h>
+// #include <zlib.h>
 #include <ext/pb_ds/assoc_container.hpp>
 #include "model.h"
 
@@ -69,7 +69,7 @@ public:
     }
     bool is_non_isomorphic(Model& m, std::string& shortened_str);
     bool cache_exceeded() const { return opt.max_cache >= 0 && non_iso_hash.size() >= opt.max_cache; }
-    std::string compress(const std::string& str, int compressionlevel = Z_BEST_COMPRESSION);
+    // std::string compress(const std::string& str, int compressionlevel = Z_BEST_COMPRESSION);
 
     bool IsomorphicAlgebras(const Model& model1, const Model& model2) const;
     void Test_IsomorphismAlgebras();

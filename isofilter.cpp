@@ -148,7 +148,7 @@ IsoFilter::is_non_isomorphic(Model& m, std::string& canon_str)
     return is_non_iso;
 }
 
-
+/*
 std::string 
 IsoFilter::compress(const std::string& str, int compressionlevel) 
 {
@@ -189,6 +189,7 @@ IsoFilter::compress(const std::string& str, int compressionlevel)
 
     return outstring;
 }
+*/
 
 
 void
